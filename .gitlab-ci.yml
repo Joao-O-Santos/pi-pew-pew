@@ -2,6 +2,7 @@ image: node:22-bookworm-slim
 
 stages:
   - validate
+  - publish
 
 validate:
   stage: validate
@@ -11,3 +12,20 @@ validate:
     - npm run typecheck
     - npm test
     - npm pack --dry-run
+
+publish:
+  stage: publish
+  image: node:24-bookworm-slim
+  needs: [validate]
+  rules:
+    - if: '$CI_COMMIT_TAG =~ /^v\d+\.\d+\.\d+(-[0-9A-Za-z.-]+)?$/'
+  id_tokens:
+    NPM_ID_TOKEN:
+      aud: "npm:registry.npmjs.org"
+    SIGSTORE_ID_TOKEN:
+      aud: sigstore
+  script:
+    - npm ci
+    - npm run typecheck
+    - npm test
+    - npm publish
