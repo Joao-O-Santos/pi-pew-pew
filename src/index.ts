@@ -14,7 +14,8 @@ type WebParameters = Static<typeof WebParameters>;
 
 function shortHost(url: string): string {
   try {
-    return new URL(url).host || new URL(url).protocol;
+    const parsed = new URL(url);
+    return parsed.host || parsed.protocol;
   } catch {
     return url;
   }
@@ -30,7 +31,7 @@ export default function pewPew(pi: ExtensionAPI) {
   pi.registerTool({
     name: "web",
     label: "web",
-    description: "Read a public or local HTTP(S) page politely. Start with mode=fetch; use mode=render only when JavaScript is needed, and mode=screenshot only when visual interpretation matters. Access is read-only, bounded, robots-aware, and does not click, type, submit, execute JavaScript, or crawl.",
+    description: "Read a public or local HTTP(S) page politely. Start with mode=fetch; use mode=render only when JavaScript is needed, and mode=screenshot only when visual interpretation matters. Access is read-only, bounded, robots-aware, and does not click, type, submit, expose arbitrary JavaScript, or crawl.",
     promptSnippet: "Read web pages with fetch → render → screenshot escalation",
     promptGuidelines: [
       "Use web with mode=fetch first.",

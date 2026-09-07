@@ -12,7 +12,6 @@ export interface HttpResult {
   requestedUrl: string;
   finalUrl: string;
   status: number;
-  statusText: string;
   contentType: string;
   retryAfter?: string;
   body: Uint8Array;
@@ -114,7 +113,6 @@ export async function fetchWithRedirects(
       requestedUrl,
       finalUrl: current.href,
       status: response.status,
-      statusText: response.statusText,
       contentType: response.headers.get("content-type") ?? "",
       retryAfter: response.headers.get("retry-after") ?? undefined,
       body,
