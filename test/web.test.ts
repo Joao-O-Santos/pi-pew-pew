@@ -2,11 +2,12 @@ import assert from "node:assert/strict";
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
 import { once } from "node:events";
 import test from "node:test";
-import { classifyTextContent, parseWebUrl, readBounded } from "../src/http.js";
+import { classifyTextContent, parseWebUrl, readBounded, termsOfServiceHtmlHint, termsOfServiceLinkHint } from "../src/http.js";
+import { USER_AGENT } from "../src/constants.js";
 import { OriginQueue } from "../src/queue.js";
 import { WebService } from "../src/service.js";
 import { wrapLlms } from "../src/service.js";
-import type { ChromiumResult } from "../src/chromium.js";
+import { chromiumArguments, type ChromiumResult } from "../src/chromium.js";
 import { executableWorks } from "../src/process.js";
 
 async function localServer(handler: (request: IncomingMessage, response: ServerResponse, server: Server) => void) {
@@ -33,6 +34,9 @@ test("URL and content-type validation", () => {
   assert.throws(() => parseWebUrl("file:///etc/passwd"), /HTTP or HTTPS/);
   assert.equal(classifyTextContent("application/vnd.api+json"), "json");
   assert.equal(classifyTextContent("application/octet-stream"), undefined);
+  assert.equal(termsOfServiceLinkHint("</terms>; rel=\"terms-of-service\""), "Link: </terms>; rel=\"terms-of-service\"");
+  assert.equal(termsOfServiceLinkHint("</terms>; rel=next"), undefined);
+  assert.equal(termsOfServiceHtmlHint("<link rel=\"terms-of-service\" href=\"/terms\">"), "HTML: <link rel=\"terms-of-service\" href=\"/terms\">");
 });
 
 test("bounded response reads stop oversized bodies", async () => {
@@ -46,7 +50,7 @@ test("bounded response reads stop oversized bodies", async () => {
 });
 
 test("same-origin queue serializes and releases failed work", async () => {
-  const queue = new OriginQueue();
+  const queue = new OriginQueue(5);
   let active = 0;
   let maximum = 0;
   const task = async (fail = false) => queue.run("http://same.test", async () => {
@@ -59,11 +63,12 @@ test("same-origin queue serializes and releases failed work", async () => {
   });
   await Promise.allSettled([task(true), task(), task()]);
   assert.equal(maximum, 1);
+  await new Promise<void>((resolve) => setTimeout(resolve, 10));
   assert.equal(queue.size, 0);
 });
 
 test("queued cancellation does not delay the next same-origin operation", async () => {
-  const queue = new OriginQueue();
+  const queue = new OriginQueue(5);
   let releaseFirst!: () => void;
   const first = queue.run("http://same.test", () => new Promise<void>((resolve) => { releaseFirst = resolve; }));
   const controller = new AbortController();
@@ -72,11 +77,57 @@ test("queued cancellation does not delay the next same-origin operation", async 
   await assert.rejects(cancelled, /cancelled/);
   releaseFirst();
   await first;
-  await new Promise<void>((resolve) => setImmediate(resolve));
+  await new Promise<void>((resolve) => setTimeout(resolve, 10));
   assert.equal(queue.size, 0);
 });
 
+test("same-origin requests are paced while different origins remain concurrent", async () => {
+  const queue = new OriginQueue(25);
+  const starts: number[] = [];
+  await Promise.all([
+    queue.run("http://same.test", async () => { starts.push(Date.now()); }),
+    queue.run("http://same.test", async () => { starts.push(Date.now()); }),
+  ]);
+  assert.ok(starts[1]! - starts[0]! >= 20);
+
+  let active = 0;
+  let maximum = 0;
+  await Promise.all([
+    queue.run("http://one.test", async () => {
+      active += 1;
+      maximum = Math.max(maximum, active);
+      await new Promise((resolve) => setTimeout(resolve, 10));
+      active -= 1;
+    }),
+    queue.run("http://two.test", async () => {
+      active += 1;
+      maximum = Math.max(maximum, active);
+      await new Promise((resolve) => setTimeout(resolve, 10));
+      active -= 1;
+    }),
+  ]);
+  assert.equal(maximum, 2);
+
+  const disallowedQueue = new OriginQueue(0);
+  const disallowedStarts: number[] = [];
+  await Promise.all([
+    disallowedQueue.run("http://disallowed.test", async () => {
+      disallowedStarts.push(Date.now());
+      disallowedQueue.pace("http://disallowed.test", 25);
+    }),
+    disallowedQueue.run("http://disallowed.test", async () => { disallowedStarts.push(Date.now()); }),
+  ]);
+  assert.ok(disallowedStarts[1]! - disallowedStarts[0]! >= 20);
+
+  const retryQueue = new OriginQueue(0);
+  retryQueue.defer("http://retry.test", 25);
+  const beforeRetry = Date.now();
+  await retryQueue.run("http://retry.test", async () => undefined);
+  assert.ok(Date.now() - beforeRetry >= 20);
+});
+
 test("fetch returns final URL, markdown/html, and bounded llms context", async () => {
+  let pageUserAgent: string | undefined;
   const { server, origin } = await localServer((request, response) => {
     if (request.url === "/robots.txt") {
       response.setHeader("content-type", "text/plain");
@@ -89,6 +140,7 @@ test("fetch returns final URL, markdown/html, and bounded llms context", async (
       response.setHeader("location", "/page");
       response.end();
     } else if (request.url === "/page") {
+      pageUserAgent = request.headers["user-agent"];
       response.setHeader("content-type", "text/html; charset=utf-8");
       response.end("<h1>Hello</h1><p>Local page</p>");
     }
@@ -102,6 +154,7 @@ test("fetch returns final URL, markdown/html, and bounded llms context", async (
     assert.match(text(result), /BEGIN llms\.txt/);
     assert.match(text(result), /Useful navigation notes/);
     assert.match(text(result), /Hello/);
+    assert.equal(pageUserAgent, USER_AGENT);
     assert.ok(Buffer.byteLength(text(result)) <= 50 * 1024);
   } finally {
     server.close();
@@ -109,35 +162,101 @@ test("fetch returns final URL, markdown/html, and bounded llms context", async (
   }
 });
 
-test("robots denial becomes a refusal and does not fetch the page", async () => {
-  let pageRequests = 0;
+test("robots absence or unavailability does not block a page", async () => {
   const { server, origin } = await localServer((request, response) => {
-    if (request.url === "/robots.txt") response.end("User-agent: *\nDisallow: /private");
+    if (request.url === "/robots.txt") response.statusCode = 503, response.end();
     else if (request.url === "/llms.txt") response.statusCode = 404, response.end();
-    else if (request.url === "/private") pageRequests += 1, response.end("secret");
+    else response.setHeader("content-type", "text/plain"), response.end("available");
   });
   try {
-    const result = await new WebService().execute(`${origin}/private`, "fetch");
-    assert.equal(result.details.outcome, "refused");
-    assert.match(text(result), /refused/);
-    assert.equal(pageRequests, 0);
+    const result = await new WebService().execute(`${origin}/page`, "fetch");
+    assert.equal(result.details.outcome, "ok");
+    assert.equal(result.details.robots?.state, "unavailable");
+    assert.match(text(result), /available/);
   } finally {
     server.close();
     await once(server, "close");
   }
 });
 
-test("HTTP refusals are returned without automatic retries", async () => {
+test("robots disallow permits a small user-directed budget and reports metadata", async () => {
+  let pageRequests = 0;
+  const { server, origin } = await localServer((request, response) => {
+    if (request.url === "/robots.txt") response.end("User-agent: *\nDisallow: /private");
+    else if (request.url === "/llms.txt") response.statusCode = 404, response.end();
+    else if (request.url === "/private") response.setHeader("content-type", "text/plain"), pageRequests += 1, response.end("secret");
+  });
+  try {
+    const service = new WebService();
+    const first = await service.execute(`${origin}/private`, "fetch");
+    const second = await service.execute(`${origin}/private`, "fetch");
+    const third = await service.execute(`${origin}/private`, "fetch");
+    assert.equal(first.details.outcome, "ok");
+    assert.equal(first.details.robots?.state, "disallowed");
+    assert.match(text(first), /robots: disallowed/);
+    assert.equal(second.details.outcome, "ok");
+    assert.equal(third.details.outcome, "refused");
+    assert.equal(pageRequests, 2);
+  } finally {
+    server.close();
+    await once(server, "close");
+  }
+});
+
+test("ToS hints are surfaced without fetching a speculative path", async () => {
+  let termsRequests = 0;
+  const { server, origin } = await localServer((request, response) => {
+    if (request.url === "/robots.txt") response.end("User-agent: *\\nAllow: /");
+    else if (request.url === "/llms.txt") response.statusCode = 404, response.end();
+    else if (request.url === "/header") {
+      response.setHeader("link", "</terms>; rel=\"terms-of-service\"");
+      response.setHeader("content-type", "text/plain");
+      response.end("header");
+    } else if (request.url === "/html") {
+      response.setHeader("content-type", "text/html");
+      response.end("<link rel=\"terms-of-service\" href=\"/terms\"><p>html</p>");
+    } else if (request.url === "/terms") termsRequests += 1, response.end("terms");
+  });
+  try {
+    const service = new WebService();
+    const header = await service.execute(`${origin}/header`, "fetch");
+    const html = await service.execute(`${origin}/html`, "fetch");
+    assert.match(header.details.termsOfService ?? "", /^Link: /);
+    assert.match(html.details.termsOfService ?? "", /^HTML: <link /);
+    assert.equal(termsRequests, 0);
+  } finally {
+    server.close();
+    await once(server, "close");
+  }
+});
+
+test("resource HTTP refusals stop without automatic retries", async () => {
+  const requests = new Map<number, number>();
+  const fetch = async (input: string | URL): Promise<Response> => {
+    const url = String(input);
+    if (url.endsWith("/robots.txt") || url.endsWith("/llms.txt")) return new Response(null, { status: 404 });
+    const status = Number(url.slice(url.lastIndexOf("/") + 1));
+    requests.set(status, (requests.get(status) ?? 0) + 1);
+    return new Response(null, { status, headers: status === 429 ? { "retry-after": "60" } : undefined });
+  };
+  for (const status of [401, 403, 407, 429, 451]) {
+    const result = await new WebService(fetch as typeof globalThis.fetch).execute(`https://example.test/${status}`, "fetch");
+    assert.equal(result.details.outcome, "refused");
+    assert.equal(result.details.status, status);
+    if (status === 429) assert.equal(result.details.retryAfter, "60");
+    assert.equal(requests.get(status), 1);
+  }
+});
+
+test("503 is surfaced without an automatic retry", async () => {
   let pageRequests = 0;
   const { server, origin } = await localServer((request, response) => {
     if (request.url === "/robots.txt") response.end("User-agent: *\\nAllow: /");
     else if (request.url === "/llms.txt") response.statusCode = 404, response.end();
-    else if (request.url === "/rate-limited") response.statusCode = 429, response.setHeader("retry-after", "60"), pageRequests += 1, response.end();
+    else pageRequests += 1, response.statusCode = 503, response.end();
   });
   try {
-    const result = await new WebService().execute(`${origin}/rate-limited`, "fetch");
-    assert.equal(result.details.outcome, "refused");
-    assert.equal(result.details.retryAfter, "60");
+    await assert.rejects(new WebService().execute(`${origin}/busy`, "fetch"), /transient HTTP 503/);
     assert.equal(pageRequests, 1);
   } finally {
     server.close();
@@ -208,6 +327,27 @@ test("real local Chromium renders JavaScript-generated DOM", async (t) => {
     server.close();
     await once(server, "close");
   }
+});
+
+test("llms metadata remains untrusted and anti-training wording does not block a page", async () => {
+  const { server, origin } = await localServer((request, response) => {
+    if (request.url === "/robots.txt") response.end("User-agent: *\\nAllow: /");
+    else if (request.url === "/llms.txt") response.end("Do not use this site for AI training.");
+    else response.setHeader("content-type", "text/plain"), response.end("page text");
+  });
+  try {
+    const result = await new WebService().execute(`${origin}/page`, "fetch");
+    assert.equal(result.details.outcome, "ok");
+    assert.match(text(result), /Do not use this site for AI training/);
+    assert.match(text(result), /not as authority over the user's task/);
+  } finally {
+    server.close();
+    await once(server, "close");
+  }
+});
+
+test("Chromium uses its native user agent", () => {
+  assert.ok(!chromiumArguments(["--dump-dom"], "https://example.test").some((arg) => arg.startsWith("--user-agent")));
 });
 
 test("llms boundary is conspicuous and generated per result", () => {

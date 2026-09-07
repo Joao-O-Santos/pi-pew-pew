@@ -1,5 +1,5 @@
 import robotsParserModule from "robots-parser";
-import { LIMITS, REDIRECT_STATUSES, REFUSAL_STATUSES, ROBOTS_AGENT, USER_AGENT } from "./constants.js";
+import { DISALLOWED_TARGET_LIMIT, LIMITS, REDIRECT_STATUSES, ROBOTS_AGENT, USER_AGENT } from "./constants.js";
 import { parseWebUrl, readBounded, decodeText, type Authorization, type FetchImplementation } from "./http.js";
 import { RefusalError, type LlmsResult, type RobotsResult } from "./types.js";
 
@@ -55,13 +55,9 @@ async function fetchPolicyFile(
     if (REDIRECT_STATUSES.has(response.status)) {
       const location = response.headers.get("location");
       await response.body?.cancel();
-      if (!location || redirects >= LIMITS.redirects) {
-        throw new Error("policy file redirect limit exceeded");
-      }
+      if (!location || redirects >= LIMITS.redirects) throw new Error("policy file redirect limit exceeded");
       const next = parseWebUrl(new URL(location, current).href);
-      if (next.origin !== initial.origin) {
-        throw new Error("policy file redirect changed origin");
-      }
+      if (next.origin !== initial.origin) throw new Error("policy file redirect changed origin");
       current = next;
       continue;
     }
@@ -77,6 +73,7 @@ async function fetchPolicyFile(
 export class PolicyManager {
   private readonly robotsCache = new Map<string, Promise<RobotsSource>>();
   private readonly llmsCache = new Map<string, Promise<LlmsSource>>();
+  private readonly disallowedTargetRequests = new Map<string, number>();
 
   constructor(private readonly fetchImpl: FetchImplementation = globalThis.fetch) {}
 
@@ -85,17 +82,16 @@ export class PolicyManager {
     try {
       const response = await fetchPolicyFile(robotsUrl, LIMITS.robotsBytes, this.fetchImpl, signal);
       if (response.status >= 200 && response.status < 300) {
-        const text = decodeText(response.body, response.contentType);
         return {
           result: { state: "allowed", status: response.status },
-          parser: robotsParser(robotsUrl.href, text),
+          parser: robotsParser(robotsUrl.href, decodeText(response.body, response.contentType)),
           cacheable: true,
         };
       }
       if (response.status === 401 || response.status === 403) {
         return {
-          result: { state: "denied", status: response.status, reason: "robots.txt denied access" },
-          cacheable: true,
+          result: { state: "unavailable", status: response.status, reason: "robots.txt denied access" },
+          cacheable: false,
         };
       }
       if (response.status >= 400 && response.status < 500 && response.status !== 429) {
@@ -127,50 +123,29 @@ export class PolicyManager {
       if (!source.parser) return { ...source.result };
       const allowed = source.parser.isAllowed(url.href, ROBOTS_AGENT) !== false;
       return allowed
-        ? { ...source.result, state: source.result.state === "absent" ? "absent" : "allowed" }
-        : { state: "denied", status: source.result.status, reason: "robots.txt disallows this URL" };
+        ? { ...source.result, state: "allowed" }
+        : { state: "disallowed", status: source.result.status, reason: "robots.txt disallows this URL" };
     });
   }
 
   private async loadLlms(origin: string, signal: AbortSignal): Promise<LlmsSource> {
-    const llmsUrl = new URL("/llms.txt", origin);
-    const llmsRobots = await this.robotsFor(llmsUrl, signal);
-    if (llmsRobots.state === "denied") {
-      return {
-        result: { state: "unavailable", reason: "robots.txt disallows /llms.txt" },
-        cacheable: true,
-      };
-    }
-
     try {
-      const response = await fetchPolicyFile(llmsUrl, LIMITS.llmsBytes, this.fetchImpl, signal);
+      const response = await fetchPolicyFile(new URL("/llms.txt", origin), LIMITS.llmsBytes, this.fetchImpl, signal);
       if (response.status >= 200 && response.status < 300) {
         return {
-          result: {
-            state: "found",
-            status: response.status,
-            text: decodeText(response.body, response.contentType),
-          },
+          result: { state: "found", status: response.status, text: decodeText(response.body, response.contentType) },
           cacheable: true,
         };
       }
       if (response.status === 404 || response.status === 410) {
         return { result: { state: "absent", status: response.status }, cacheable: true };
       }
-      if (REFUSAL_STATUSES.has(response.status) || (response.status === 503 && response.retryAfter)) {
-        throw new RefusalError(`llms.txt returned HTTP ${response.status}`, {
-          reason: `llms.txt returned HTTP ${response.status}`,
-          status: response.status,
-          retryAfter: response.retryAfter,
-          llms: { state: "unavailable", status: response.status, retryAfter: response.retryAfter },
-        });
-      }
       return {
-        result: { state: "unavailable", status: response.status, reason: `llms.txt returned HTTP ${response.status}` },
+        result: { state: "unavailable", status: response.status, retryAfter: response.retryAfter, reason: `llms.txt returned HTTP ${response.status}` },
         cacheable: false,
       };
     } catch (error) {
-      if (signal.aborted || error instanceof RefusalError) throw error;
+      if (signal.aborted) throw error;
       return {
         result: {
           state: "unavailable",
@@ -185,13 +160,18 @@ export class PolicyManager {
     return fromCache(this.llmsCache, origin, () => this.loadLlms(origin, signal), (source) => ({ ...source.result }));
   }
 
+  private allowDisallowedTarget(origin: string): boolean {
+    const requests = this.disallowedTargetRequests.get(origin) ?? 0;
+    if (requests >= DISALLOWED_TARGET_LIMIT) return false;
+    this.disallowedTargetRequests.set(origin, requests + 1);
+    return true;
+  }
+
   async authorize(url: URL, signal: AbortSignal): Promise<Authorization> {
     const robots = await this.robotsFor(url, signal);
-    if (robots.state === "denied" || robots.state === "unavailable") {
-      throw new RefusalError(robots.reason ?? `robots.txt is ${robots.state}`, {
-        reason: robots.reason ?? `robots.txt is ${robots.state}`,
-        status: robots.status,
-        retryAfter: robots.retryAfter,
+    if (robots.state === "disallowed" && !this.allowDisallowedTarget(url.origin)) {
+      throw new RefusalError(`PEW-PEW: robots.txt disallows further requests to ${url.origin}`, {
+        reason: `robots.txt disallows more than ${DISALLOWED_TARGET_LIMIT} target requests per origin`,
         robots,
       });
     }

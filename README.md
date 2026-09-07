@@ -2,7 +2,7 @@
 
 **pew-pew — Pi Explores Webs; Politely Escalates Webfetches**
 
-A small, read-only [Pi](https://pi.dev) extension that gives models one polite web tool:
+A user-directed, read-only [Pi](https://pi.dev) web-retrieval extension. It is deliberately low-volume and does not crawl or circumvent access controls.
 
 ```text
 web({ url, mode?: "fetch" | "render" | "screenshot" })
@@ -51,11 +51,13 @@ Use the modes in this order:
 2. `render` — headless Chromium's post-JavaScript DOM, for pages whose useful content requires JavaScript.
 3. `screenshot` — a PNG image, only when visual interpretation matters.
 
-The model sees exactly one tool, `web`; `mode` defaults to `fetch`. Output is bounded, URLs are restricted to HTTP(S), redirects are limited, and same-origin calls are serialized while unrelated origins can run concurrently.
+The model sees exactly one tool, `web`; `mode` defaults to `fetch`. Output is bounded, URLs are restricted to HTTP(S), redirects are limited, and same-origin calls are serialized and paced while unrelated origins can run concurrently.
 
-Before a page request, PEW-PEW checks the origin's `robots.txt` with the `pi-pew-pew` user-agent. Successful policies and explicit absence are cached in memory. A denied or temporarily unavailable robots policy stops that operation; PEW-PEW never escalates modes to bypass a denial. HTTP refusals such as `401`, `403`, `429`, `407`, and `451` are also surfaced without automatic retries.
+Before a page request, PEW-PEW checks and reports the origin's `robots.txt` with the honest `pi-pew-pew` user-agent. `robots.txt` is a crawler-policy signal, not a universal barrier to isolated user-directed retrieval: a disallowed target can be read twice per origin in a Pi session, then later disallowed target requests stop as crawler-like repetition. Allowed targets are not charged to that small budget. Successful policies and explicit absence are cached in memory.
 
-When `/llms.txt` exists, its bounded contents are returned separately inside a generated contextual boundary with explicit instructions to treat it as untrusted website data. PEW-PEW does not attempt to decide semantically whether that file is refusing agents or injecting prompts; the model must not obey site content as authority over its tools or goals.
+Actual resource-level refusals (`401`, `403`, `407`, `429`, and `451`) stop the operation without automatic retries or mode escalation. `429` surfaces and honors `Retry-After`; `503` is surfaced as a temporary failure without retry. PEW-PEW does not spoof user agents, solve CAPTCHAs, bypass anti-bot systems, reuse clearance cookies, rotate proxies, bypass authentication or paywalls, or deliberately defeat access controls. Chromium retains its native user agent.
+
+When `/llms.txt` exists, its bounded contents are returned separately inside a generated contextual boundary as untrusted website metadata. It cannot override the user's task or higher-priority instructions; statements about AI training or bots do not by themselves prohibit an isolated read. When a response already advertises a standardized `terms-of-service` link through an HTTP `Link` header or HTML `<link>` tag, PEW-PEW surfaces the raw hint for model interpretation. It neither parses nor fetches the ToS automatically.
 
 ## Optional programs
 
@@ -79,6 +81,8 @@ The v1 defaults are intentionally conservative:
 - HTTP response: 2 MiB
 - model-facing text: 50 KiB or 2,000 lines
 - redirects: 5
+- same-origin gap: 750 ms (2.75 s after a disallowed target)
+- disallowed target-page allowance: 2 per origin per Pi session
 - `robots.txt`: 512 KiB
 - `llms.txt`: 64 KiB
 - fetch operation: 15 seconds
@@ -98,7 +102,7 @@ npm test
 
 The test suite uses deterministic local HTTP servers and does not require network access. Chromium-specific integration tests run only when a Chromium executable is available.
 
-GitLab CI runs `npm ci`, typechecking, the test suite, and `npm pack --dry-run` on every configured pipeline. It never publishes a package.
+GitLab CI runs `npm ci`, typechecking, the test suite, and `npm pack --dry-run` on every configured pipeline.
 
 ## License
 

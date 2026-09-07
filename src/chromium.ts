@@ -9,6 +9,10 @@ export interface ChromiumResult {
   screenshot?: Buffer;
 }
 
+export function chromiumArguments(args: string[], url: string): string[] {
+  return ["--headless=new", "--disable-gpu", ...args, url];
+}
+
 export class Chromium {
   private discovered?: Promise<string | undefined>;
 
@@ -44,7 +48,7 @@ export class Chromium {
 
   private async run(url: string, signal: AbortSignal, action: string, args: string[], maxStdoutBytes: number) {
     const executable = await this.executable(signal);
-    const result = await runProcess(executable, ["--headless=new", "--disable-gpu", ...args, url], {
+    const result = await runProcess(executable, chromiumArguments(args, url), {
       signal,
       timeoutMs: LIMITS.chromiumTimeoutMs,
       maxStdoutBytes,

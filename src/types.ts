@@ -1,6 +1,6 @@
 export type WebMode = "fetch" | "render" | "screenshot";
 export type WebOutcome = "ok" | "refused" | "failed";
-export type RobotsState = "allowed" | "denied" | "absent" | "unavailable";
+export type RobotsState = "allowed" | "disallowed" | "absent" | "unavailable";
 export type LlmsState = "found" | "absent" | "unavailable";
 
 export interface RobotsResult {
@@ -32,6 +32,7 @@ export interface WebDetails {
   retryAfter?: string;
   reason?: string;
   truncated?: boolean;
+  termsOfService?: string;
 }
 
 export interface WebResult {

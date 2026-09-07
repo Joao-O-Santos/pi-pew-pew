@@ -67,7 +67,7 @@ export default function pewPew(pi: ExtensionAPI) {
       let summary = `pew-pew → ${host} · ${statusLabel} · ${format}`;
       if (details?.outcome === "refused") {
         const robots = details.robots?.state;
-        const label = robots === "denied" ? "ROBOTS"
+        const label = robots === "disallowed" ? "ROBOTS"
           : robots === "unavailable" ? "ROBOTS?"
             : statusLabel;
         summary = `pew-pew → ${host} · ${label}`;

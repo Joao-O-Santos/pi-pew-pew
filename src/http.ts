@@ -1,4 +1,4 @@
-import { REDIRECT_STATUSES, USER_AGENT } from "./constants.js";
+import { REDIRECT_STATUSES, REFUSAL_STATUSES, TOS_REL, USER_AGENT } from "./constants.js";
 import type { LlmsResult, RobotsResult } from "./types.js";
 
 export type FetchImplementation = typeof globalThis.fetch;
@@ -16,6 +16,7 @@ export interface HttpResult {
   retryAfter?: string;
   body: Uint8Array;
   authorization: Authorization;
+  termsOfService?: string;
 }
 
 export function parseWebUrl(input: string): URL {
@@ -30,6 +31,20 @@ export function parseWebUrl(input: string): URL {
   }
   url.hash = "";
   return url;
+}
+
+const termsOfServiceRel = new RegExp(`\\brel\\s*=\\s*(?:"[^"]*\\b${TOS_REL}\\b[^"]*"|'[^']*\\b${TOS_REL}\\b[^']*'|${TOS_REL}\\b)`, "i");
+
+export function termsOfServiceLinkHint(header: string | null): string | undefined {
+  return header && termsOfServiceRel.test(header) ? `Link: ${header}` : undefined;
+}
+
+export function termsOfServiceHtmlHint(html: string): string | undefined {
+  const match = /<link\b[^>]*>/gi;
+  for (const tag of html.matchAll(match)) {
+    if (termsOfServiceRel.test(tag[0])) return `HTML: ${tag[0]}`;
+  }
+  return undefined;
 }
 
 export async function readBounded(response: Response, maxBytes: number): Promise<Uint8Array> {
@@ -106,7 +121,8 @@ export async function fetchWithRedirects(
       continue;
     }
 
-    const body = options.readBody === false
+    const refusal = REFUSAL_STATUSES.has(response.status) || response.status === 503;
+    const body = options.readBody === false || refusal
       ? (await response.body?.cancel(), new Uint8Array())
       : await readBounded(response, options.maxBytes);
     return {
@@ -117,6 +133,7 @@ export async function fetchWithRedirects(
       retryAfter: response.headers.get("retry-after") ?? undefined,
       body,
       authorization,
+      termsOfService: termsOfServiceLinkHint(response.headers.get("link")),
     };
   }
 }

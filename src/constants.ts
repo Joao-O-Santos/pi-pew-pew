@@ -1,4 +1,8 @@
-export const USER_AGENT = "pi-pew-pew/0.1";
+export const USER_AGENT = "pi-pew-pew/0.2";
+export const PACING_MS = 750;
+export const DISALLOWED_PACING_MS = 2_750;
+export const DISALLOWED_TARGET_LIMIT = 2;
+export const TOS_REL = "terms-of-service";
 export const ROBOTS_AGENT = "pi-pew-pew";
 export const REDIRECT_STATUSES = new Set([301, 302, 303, 307, 308]);
 export const REFUSAL_STATUSES = new Set([401, 403, 407, 429, 451]);
