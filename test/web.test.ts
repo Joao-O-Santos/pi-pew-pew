@@ -171,8 +171,8 @@ test("render and screenshot use the approved preflight final URL", async () => {
   });
   const calls: string[] = [];
   const fakeChromium = {
-    render: async (url: string): Promise<ChromiumResult> => { calls.push(`render:${url}`); return { executable: "fake", dom: "<h1>Rendered</h1>" }; },
-    screenshot: async (url: string): Promise<ChromiumResult> => { calls.push(`screenshot:${url}`); return { executable: "fake", screenshot: Buffer.from("png") }; },
+    render: async (url: string): Promise<ChromiumResult> => { calls.push(`render:${url}`); return { dom: "<h1>Rendered</h1>" }; },
+    screenshot: async (url: string): Promise<ChromiumResult> => { calls.push(`screenshot:${url}`); return { screenshot: Buffer.from("png") }; },
   };
   try {
     const service = new WebService(globalThis.fetch, fakeChromium as never);

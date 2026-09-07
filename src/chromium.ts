@@ -5,7 +5,6 @@ import { LIMITS } from "./constants.js";
 import { executableWorks, runProcess } from "./process.js";
 
 export interface ChromiumResult {
-  executable: string;
   dom?: string;
   screenshot?: Buffer;
 }
@@ -52,19 +51,19 @@ export class Chromium {
       maxStderrBytes: LIMITS.processStderrBytes,
     });
     if (result.code !== 0) throw new Error(`PEW-PEW: Chromium failed to ${action} (exit code ${result.code})`);
-    return { executable, result };
+    return result;
   }
 
   async render(url: string, signal: AbortSignal): Promise<ChromiumResult> {
-    const { executable, result } = await this.run(url, signal, "render the page", ["--dump-dom"], LIMITS.chromiumBytes);
-    return { executable, dom: result.stdout.toString("utf8") };
+    const result = await this.run(url, signal, "render the page", ["--dump-dom"], LIMITS.chromiumBytes);
+    return { dom: result.stdout.toString("utf8") };
   }
 
   async screenshot(url: string, signal: AbortSignal): Promise<ChromiumResult> {
     const directory = await mkdtemp(join(tmpdir(), "pi-pew-pew-"));
     const path = join(directory, "screenshot.png");
     try {
-      const { executable } = await this.run(
+      await this.run(
         url, signal, "take a screenshot",
         ["--hide-scrollbars", "--window-size=1280,900", `--screenshot=${path}`], 64 * 1024,
       );
@@ -72,7 +71,7 @@ export class Chromium {
       if (metadata.size === 0 || metadata.size > LIMITS.screenshotBytes) {
         throw new Error("PEW-PEW: Chromium produced an invalid or oversized screenshot");
       }
-      return { executable, screenshot: await readFile(path) };
+      return { screenshot: await readFile(path) };
     } finally {
       await rm(directory, { recursive: true, force: true });
     }
