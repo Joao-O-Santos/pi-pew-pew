@@ -1,6 +1,6 @@
 # pi-pew-pew
 
-**PEW-PEW — Pi Explores Webs; Politely Escalates Webfetches**
+**pew-pew — Pi Explores Webs; Politely Escalates Webfetches**
 
 A small, read-only [Pi](https://pi.dev) extension that gives models one polite web tool:
 
@@ -99,18 +99,6 @@ npm test
 The test suite uses deterministic local HTTP servers and does not require network access. Chromium-specific integration tests run only when a Chromium executable is available.
 
 GitLab CI runs `npm ci`, typechecking, the test suite, and `npm pack --dry-run` on every configured pipeline. It never publishes a package.
-
-## Releasing to npm
-
-Publishing is deliberately manual:
-
-1. Make the GitLab project public if you want source links to work for npm users. Set the matching semantic version in `package.json`, then run `npm run typecheck`, `npm test`, and `npm pack --dry-run`.
-2. Commit the release, merge it to `main`, and tag that exact commit.
-3. Authenticate to the public npm registry with `npm login`, then confirm the account with `npm whoami`.
-4. From the tagged, clean checkout, publish with `npm publish`.
-5. Verify the published tarball with `npm view pi-pew-pew version` and install it in a clean Pi configuration using `pi install npm:pi-pew-pew`.
-
-This repository sets `publishConfig.access` to `public`, but it has no publishing token, registry credential, or automated release job. Never put an npm token in the repository or GitLab CI variables unless you intentionally add a separately reviewed release pipeline.
 
 ## License
 
