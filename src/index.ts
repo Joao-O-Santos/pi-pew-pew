@@ -4,6 +4,7 @@ import { StringEnum } from "@earendil-works/pi-ai";
 import { Type, type Static } from "typebox";
 import { parseWebUrl } from "./http.js";
 import { WebService } from "./service.js";
+import { httpStatusLabel, isSuccessfulHttpStatus } from "./status.js";
 import type { WebMode, WebResult } from "./types.js";
 
 const WebParameters = Type.Object({
@@ -60,12 +61,22 @@ export default function pewPew(pi: ExtensionAPI) {
       if (isPartial) return new Text(theme.fg("warning", "pew-pew → fetching..."), 0, 0);
       const details = result.details;
       const host = shortHost(details?.finalUrl ?? details?.requestedUrl ?? context.args.url ?? "(unknown)");
-      const status = details?.status ?? "?";
+      const status = details?.status;
+      const statusLabel = httpStatusLabel(status);
       const format = details?.format ?? "text";
-      let summary = `pew-pew → ${host} · ${status} · ${format}`;
-      if (details?.outcome === "refused") summary = `pew-pew → ${host} · refused`;
-      if (details?.outcome === "failed") summary = `pew-pew → ${host} · failed`;
-      if (!expanded) return new Text(theme.fg(details?.outcome === "ok" ? "success" : "warning", summary), 0, 0);
+      let summary = `pew-pew → ${host} · ${statusLabel} · ${format}`;
+      if (details?.outcome === "refused") {
+        const robots = details.robots?.state;
+        const label = robots === "denied" ? "ROBOTS DENIED"
+          : robots === "unavailable" ? "ROBOTS UNAVAILABLE"
+            : statusLabel;
+        summary = `pew-pew → ${host} · ${label}`;
+      }
+      if (details?.outcome === "failed") summary = `pew-pew → ${host} · FAILED`;
+      if (!expanded) {
+        const color = details?.outcome === "ok" && isSuccessfulHttpStatus(status) ? "success" : "warning";
+        return new Text(theme.fg(color, summary), 0, 0);
+      }
 
       const text = resultText(result);
       const container = new Container();
