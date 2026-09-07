@@ -1,6 +1,6 @@
 {
   "name": "pi-pew-pew",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Polite, read-only web fetch, render, and screenshot access for Pi",
   "type": "module",
   "license": "MIT",
