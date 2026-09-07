@@ -22,6 +22,25 @@ For a project-local installation:
 pi install -l npm:pi-pew-pew
 ```
 
+### Install from Git
+
+Use the Git repository before an npm release, or whenever you want Pi to follow the repository's default branch (`main`):
+
+```bash
+pi install git:git@gitlab.com:Joao-O-Santos/pi-pew-pew
+pi update --extensions
+```
+
+The first command installs it globally under Pi's configured package directory. The second updates it to the current `main` tip. For an isolated project test, add `-l` to `pi install`.
+
+To test one immutable release candidate instead, pin a tag or commit:
+
+```bash
+pi install git:git@gitlab.com:Joao-O-Santos/pi-pew-pew@<tag-or-commit>
+```
+
+Pinned Git packages do not advance during `pi update --extensions`; reinstall with the next tag or commit to move them forward.
+
 The package requires Node.js 22.19 or newer. Static fetching uses only Node's built-in `fetch()`.
 
 ## How it works
@@ -78,6 +97,20 @@ npm test
 ```
 
 The test suite uses deterministic local HTTP servers and does not require network access. Chromium-specific integration tests run only when a Chromium executable is available.
+
+GitLab CI runs `npm ci`, typechecking, the test suite, and `npm pack --dry-run` on every configured pipeline. It never publishes a package.
+
+## Releasing to npm
+
+Publishing is deliberately manual:
+
+1. Make the GitLab project public if you want source links to work for npm users, then merge the intended release to `main` and tag it.
+2. Set the matching semantic version in `package.json`, run `npm run typecheck`, `npm test`, and `npm pack --dry-run`.
+3. Authenticate to the public npm registry with `npm login`, then confirm the account with `npm whoami`.
+4. Publish from the tagged, clean checkout with `npm publish`.
+5. Verify the published tarball with `npm view pi-pew-pew version` and install it in a clean Pi configuration using `pi install npm:pi-pew-pew`.
+
+This repository sets `publishConfig.access` to `public`, but it has no publishing token, registry credential, or automated release job. Never put an npm token in the repository or GitLab CI variables unless you intentionally add a separately reviewed release pipeline.
 
 ## License
 

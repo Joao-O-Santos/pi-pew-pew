@@ -1,0 +1,13 @@
+image: node:22-bookworm-slim
+
+stages:
+  - validate
+
+validate:
+  stage: validate
+  interruptible: true
+  script:
+    - npm ci
+    - npm run typecheck
+    - npm test
+    - npm pack --dry-run

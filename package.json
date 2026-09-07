@@ -4,6 +4,17 @@
   "description": "Polite, read-only web fetch, render, and screenshot access for Pi",
   "type": "module",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://gitlab.com/Joao-O-Santos/pi-pew-pew.git"
+  },
+  "bugs": {
+    "url": "https://gitlab.com/Joao-O-Santos/pi-pew-pew/-/issues"
+  },
+  "homepage": "https://gitlab.com/Joao-O-Santos/pi-pew-pew",
+  "publishConfig": {
+    "access": "public"
+  },
   "files": [
     "src",
     "README.md",
