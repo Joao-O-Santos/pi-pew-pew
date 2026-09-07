@@ -43,46 +43,31 @@ export class Chromium {
     return undefined;
   }
 
-  async render(url: string, signal: AbortSignal): Promise<ChromiumResult> {
+  private async run(url: string, signal: AbortSignal, action: string, args: string[], maxStdoutBytes: number) {
     const executable = await this.executable(signal);
-    const result = await runProcess(executable, [
-      "--headless=new",
-      "--disable-gpu",
-      "--dump-dom",
-      url,
-    ], {
+    const result = await runProcess(executable, ["--headless=new", "--disable-gpu", ...args, url], {
       signal,
       timeoutMs: LIMITS.chromiumTimeoutMs,
-      maxStdoutBytes: LIMITS.chromiumBytes,
+      maxStdoutBytes,
       maxStderrBytes: LIMITS.processStderrBytes,
     });
-    if (result.code !== 0) {
-      throw new Error(`PEW-PEW: Chromium failed to render the page (exit code ${result.code})`);
-    }
+    if (result.code !== 0) throw new Error(`PEW-PEW: Chromium failed to ${action} (exit code ${result.code})`);
+    return { executable, result };
+  }
+
+  async render(url: string, signal: AbortSignal): Promise<ChromiumResult> {
+    const { executable, result } = await this.run(url, signal, "render the page", ["--dump-dom"], LIMITS.chromiumBytes);
     return { executable, dom: result.stdout.toString("utf8") };
   }
 
   async screenshot(url: string, signal: AbortSignal): Promise<ChromiumResult> {
-    const executable = await this.executable(signal);
     const directory = await mkdtemp(join(tmpdir(), "pi-pew-pew-"));
     const path = join(directory, "screenshot.png");
     try {
-      const result = await runProcess(executable, [
-        "--headless=new",
-        "--disable-gpu",
-        "--hide-scrollbars",
-        "--window-size=1280,900",
-        `--screenshot=${path}`,
-        url,
-      ], {
-        signal,
-        timeoutMs: LIMITS.chromiumTimeoutMs,
-        maxStdoutBytes: 64 * 1024,
-        maxStderrBytes: LIMITS.processStderrBytes,
-      });
-      if (result.code !== 0) {
-        throw new Error(`PEW-PEW: Chromium failed to take a screenshot (exit code ${result.code})`);
-      }
+      const { executable } = await this.run(
+        url, signal, "take a screenshot",
+        ["--hide-scrollbars", "--window-size=1280,900", `--screenshot=${path}`], 64 * 1024,
+      );
       const metadata = await stat(path);
       if (metadata.size === 0 || metadata.size > LIMITS.screenshotBytes) {
         throw new Error("PEW-PEW: Chromium produced an invalid or oversized screenshot");
