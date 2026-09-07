@@ -1,5 +1,5 @@
 import robotsParserModule from "robots-parser";
-import { LIMITS, ROBOTS_AGENT, USER_AGENT } from "./constants.js";
+import { LIMITS, REDIRECT_STATUSES, REFUSAL_STATUSES, ROBOTS_AGENT, USER_AGENT } from "./constants.js";
 import { parseWebUrl, readBounded, decodeText, type Authorization, type FetchImplementation } from "./http.js";
 import { RefusalError, type LlmsResult, type RobotsResult } from "./types.js";
 
@@ -39,9 +39,6 @@ async function fromCache<T extends { cacheable: boolean }, R>(
   }
 }
 
-const REDIRECTS = new Set([301, 302, 303, 307, 308]);
-const REFUSAL_STATUSES = new Set([401, 403, 407, 429, 451]);
-
 async function fetchPolicyFile(
   initial: URL,
   maxBytes: number,
@@ -55,7 +52,7 @@ async function fetchPolicyFile(
       headers: { "user-agent": USER_AGENT, accept: "text/plain,*/*;q=0.1" },
       signal,
     });
-    if (REDIRECTS.has(response.status)) {
+    if (REDIRECT_STATUSES.has(response.status)) {
       const location = response.headers.get("location");
       await response.body?.cancel();
       if (!location || redirects >= LIMITS.redirects) {

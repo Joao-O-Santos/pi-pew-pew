@@ -1,5 +1,7 @@
 export const USER_AGENT = "pi-pew-pew/0.1";
 export const ROBOTS_AGENT = "pi-pew-pew";
+export const REDIRECT_STATUSES = new Set([301, 302, 303, 307, 308]);
+export const REFUSAL_STATUSES = new Set([401, 403, 407, 429, 451]);
 
 export const LIMITS = {
   redirects: 5,

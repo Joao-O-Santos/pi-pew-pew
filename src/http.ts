@@ -1,4 +1,4 @@
-import { USER_AGENT } from "./constants.js";
+import { REDIRECT_STATUSES, USER_AGENT } from "./constants.js";
 import type { LlmsResult, RobotsResult } from "./types.js";
 
 export type FetchImplementation = typeof globalThis.fetch;
@@ -68,8 +68,6 @@ export async function readBounded(response: Response, maxBytes: number): Promise
   return output;
 }
 
-const REDIRECTS = new Set([301, 302, 303, 307, 308]);
-
 export async function fetchWithRedirects(
   input: string,
   options: {
@@ -98,7 +96,7 @@ export async function fetchWithRedirects(
       signal: options.signal,
     });
 
-    if (REDIRECTS.has(response.status)) {
+    if (REDIRECT_STATUSES.has(response.status)) {
       const location = response.headers.get("location");
       await response.body?.cancel();
       if (!location) throw new Error(`PEW-PEW: redirect ${response.status} did not include Location`);

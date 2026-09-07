@@ -1,4 +1,4 @@
-import { LIMITS } from "./constants.js";
+import { LIMITS, REFUSAL_STATUSES } from "./constants.js";
 import { htmlToMarkdown, limitText } from "./convert.js";
 import { Chromium } from "./chromium.js";
 import { fetchWithRedirects, classifyTextContent, decodeText, parseWebUrl, type FetchImplementation } from "./http.js";
@@ -93,7 +93,7 @@ export class WebService {
       authorize: (target) => this.policy.authorize(target, signal),
     });
     const { requestedUrl, finalUrl, status, contentType, retryAfter, authorization } = result;
-    if ([401, 403, 407, 429, 451].includes(status) || (status === 503 && retryAfter)) {
+    if (REFUSAL_STATUSES.has(status) || (status === 503 && retryAfter)) {
       throw new RefusalError(`PEW-PEW: site refused automated access with HTTP ${status}`, {
         reason: `HTTP ${status} refusal`, status, retryAfter,
       });
