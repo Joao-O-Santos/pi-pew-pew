@@ -28,7 +28,7 @@ Use the Git repository before an npm release, or whenever you want Pi to follow 
 
 ```bash
 pi install git:git@gitlab.com:Joao-O-Santos/pi-pew-pew
-pi update --extensions
+pi update git:git@gitlab.com:Joao-O-Santos/pi-pew-pew
 ```
 
 The first command installs it globally under Pi's configured package directory. The second updates it to the current `main` tip. For an isolated project test, add `-l` to `pi install`.
@@ -104,10 +104,10 @@ GitLab CI runs `npm ci`, typechecking, the test suite, and `npm pack --dry-run` 
 
 Publishing is deliberately manual:
 
-1. Make the GitLab project public if you want source links to work for npm users, then merge the intended release to `main` and tag it.
-2. Set the matching semantic version in `package.json`, run `npm run typecheck`, `npm test`, and `npm pack --dry-run`.
+1. Make the GitLab project public if you want source links to work for npm users. Set the matching semantic version in `package.json`, then run `npm run typecheck`, `npm test`, and `npm pack --dry-run`.
+2. Commit the release, merge it to `main`, and tag that exact commit.
 3. Authenticate to the public npm registry with `npm login`, then confirm the account with `npm whoami`.
-4. Publish from the tagged, clean checkout with `npm publish`.
+4. From the tagged, clean checkout, publish with `npm publish`.
 5. Verify the published tarball with `npm view pi-pew-pew version` and install it in a clean Pi configuration using `pi install npm:pi-pew-pew`.
 
 This repository sets `publishConfig.access` to `public`, but it has no publishing token, registry credential, or automated release job. Never put an npm token in the repository or GitLab CI variables unless you intentionally add a separately reviewed release pipeline.
