@@ -1,5 +1,5 @@
 import { DISALLOWED_PACING_MS, LIMITS, REFUSAL_STATUSES } from "./constants.js";
-import { htmlToMarkdown, limitText } from "./convert.js";
+import { htmlToMarkdown, limitText, pandocCandidates } from "./convert.js";
 import { Chromium } from "./chromium.js";
 import { fetchWithRedirects, classifyTextContent, decodeText, parseWebUrl, termsOfServiceHtmlHint, type FetchImplementation, type HttpResult } from "./http.js";
 import { OriginQueue } from "./queue.js";
@@ -55,7 +55,7 @@ function retryAfterMs(retryAfter: string | undefined): number | undefined {
 export class WebService {
   private readonly policy: PolicyManager;
   private readonly queue = new OriginQueue();
-  private pandoc?: Promise<boolean>;
+  private pandoc?: Promise<string | undefined>;
 
   constructor(
     private readonly fetchImpl: FetchImplementation = globalThis.fetch,
@@ -64,8 +64,15 @@ export class WebService {
     this.policy = new PolicyManager(fetchImpl);
   }
 
-  private async pandocAvailable(signal: AbortSignal): Promise<boolean> {
-    this.pandoc ??= executableWorks("pandoc", signal);
+  private async findPandoc(signal: AbortSignal): Promise<string | undefined> {
+    for (const candidate of pandocCandidates()) {
+      if (await executableWorks(candidate, signal)) return candidate;
+    }
+    return undefined;
+  }
+
+  private async pandocExecutable(signal: AbortSignal): Promise<string | undefined> {
+    this.pandoc ??= this.findPandoc(signal);
     try {
       return await this.pandoc;
     } catch (error) {
@@ -141,7 +148,7 @@ export class WebService {
         : decodeText(result.body, contentType);
       if (kind === "html") details.termsOfService ??= termsOfServiceHtmlHint(raw);
       const { text, ...conversion } = kind === "html"
-        ? await htmlToMarkdown(raw, signal, () => this.pandocAvailable(signal))
+        ? await htmlToMarkdown(raw, signal, () => this.pandocExecutable(signal))
         : { ...limitText(raw), format: kind, pandoc: "unavailable" as const };
       Object.assign(details, conversion);
       body = text;

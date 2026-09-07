@@ -15,6 +15,7 @@ export const LIMITS = {
   robotsBytes: 512 * 1024,
   llmsBytes: 64 * 1024,
   fetchTimeoutMs: 15_000,
+  pandocTimeoutMs: 10_000,
   chromiumTimeoutMs: 30_000,
   chromiumBytes: 2 * 1024 * 1024,
   screenshotBytes: 10 * 1024 * 1024,
