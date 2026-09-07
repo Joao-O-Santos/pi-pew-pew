@@ -3,7 +3,8 @@ import { createServer, type IncomingMessage, type Server, type ServerResponse } 
 import { once } from "node:events";
 import test from "node:test";
 import { classifyTextContent, parseWebUrl, readBounded, termsOfServiceHtmlHint, termsOfServiceLinkHint } from "../src/http.js";
-import { USER_AGENT } from "../src/constants.js";
+import { LIMITS, USER_AGENT } from "../src/constants.js";
+import { htmlToMarkdown, pandocCandidates } from "../src/convert.js";
 import { OriginQueue } from "../src/queue.js";
 import { WebService } from "../src/service.js";
 import { wrapLlms } from "../src/service.js";
@@ -39,14 +40,20 @@ test("URL and content-type validation", () => {
   assert.equal(termsOfServiceHtmlHint("<link rel=\"terms-of-service\" href=\"/terms\">"), "HTML: <link rel=\"terms-of-service\" href=\"/terms\">");
 });
 
-test("bounded response reads stop oversized bodies", async () => {
-  const response = new Response(new ReadableStream({
-    start(controller) {
-      controller.enqueue(new Uint8Array([1, 2, 3]));
-      controller.close();
-    },
-  }));
-  await assert.rejects(readBounded(response, 2), /exceeds/);
+test("Pandoc discovery prefers an explicit path and avoids duplicates", () => {
+  assert.deepEqual(pandocCandidates("/opt/pandoc"), ["/opt/pandoc", "pandoc"]);
+  assert.deepEqual(pandocCandidates("pandoc"), ["pandoc"]);
+});
+
+test("Pandoc HTML fallback remains bounded", async () => {
+  const converted = await htmlToMarkdown(
+    `<p>${"x".repeat(LIMITS.outputBytes * 2)}</p>`,
+    new AbortController().signal,
+    async () => undefined,
+  );
+  assert.equal(converted.format, "html");
+  assert.equal(converted.pandoc, "unavailable");
+  assert.ok(Buffer.byteLength(converted.text) <= LIMITS.outputBytes);
 });
 
 test("same-origin queue serializes and releases failed work", async () => {

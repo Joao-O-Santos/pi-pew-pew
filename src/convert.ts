@@ -32,20 +32,25 @@ export function limitText(
   return { text: truncateUtf8(`${output}${notice}`, maxBytes), truncated: true };
 }
 
+export function pandocCandidates(explicit = process.env.PEW_PEW_PANDOC): string[] {
+  return [...new Set([explicit, "pandoc"].filter((value): value is string => Boolean(value)))];
+}
+
 export async function htmlToMarkdown(
   html: string,
   signal: AbortSignal,
-  pandocAvailable: () => Promise<boolean>,
+  pandocExecutable: () => Promise<string | undefined>,
 ): Promise<ConvertedBody> {
-  if (!(await pandocAvailable())) {
+  const executable = await pandocExecutable();
+  if (!executable) {
     const limited = limitText(html);
     return { ...limited, format: "html", pandoc: "unavailable" };
   }
 
   try {
-    const result = await runProcess("pandoc", ["-f", "html", "-t", "gfm"], {
+    const result = await runProcess(executable, ["--from=html", "--to=gfm", "--wrap=none"], {
       signal,
-      timeoutMs: LIMITS.fetchTimeoutMs,
+      timeoutMs: LIMITS.pandocTimeoutMs,
       maxStdoutBytes: LIMITS.outputBytes,
       maxStderrBytes: LIMITS.processStderrBytes,
       stdin: html,
@@ -55,13 +60,7 @@ export async function htmlToMarkdown(
     return { ...limited, format: "markdown", pandoc: "converted" };
   } catch (error) {
     if (signal.aborted) throw error;
-    const limited = limitText(html);
-    return {
-      ...limited,
-      format: "html",
-      pandoc: "failed",
-      text: `${limited.text}\n\n[PEW-PEW: Pandoc conversion failed; showing HTML]`,
-    };
+    const limited = limitText(`${html}\n\n[PEW-PEW: Pandoc conversion failed; showing HTML]`);
+    return { ...limited, format: "html", pandoc: "failed" };
   }
 }
-
