@@ -67,12 +67,12 @@ export default function pewPew(pi: ExtensionAPI) {
       let summary = `pew-pew → ${host} · ${statusLabel} · ${format}`;
       if (details?.outcome === "refused") {
         const robots = details.robots?.state;
-        const label = robots === "denied" ? "ROBOTS DENIED"
-          : robots === "unavailable" ? "ROBOTS UNAVAILABLE"
+        const label = robots === "denied" ? "ROBOTS"
+          : robots === "unavailable" ? "ROBOTS?"
             : statusLabel;
         summary = `pew-pew → ${host} · ${label}`;
       }
-      if (details?.outcome === "failed") summary = `pew-pew → ${host} · FAILED`;
+      if (details?.outcome === "failed") summary = `pew-pew → ${host} · FAIL`;
       if (!expanded) {
         const color = details?.outcome === "ok" && isSuccessfulHttpStatus(status) ? "success" : "warning";
         return new Text(theme.fg(color, summary), 0, 0);

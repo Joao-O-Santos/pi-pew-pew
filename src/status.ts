@@ -1,18 +1,18 @@
 export function httpStatusLabel(status: number | undefined): string {
-  if (status === undefined) return "UNKNOWN";
+  if (status === undefined) return "?";
   if (status >= 200 && status < 300) return "HIT";
-  if (status >= 300 && status < 400) return "REDIRECT";
+  if (status >= 300 && status < 400) return "REDIR";
 
   switch (status) {
-    case 401: return "AUTH REQUIRED";
-    case 403: return "FORBIDDEN";
+    case 401: return "AUTH";
+    case 403: return "DENIED";
     case 404: return "MISS";
-    case 407: return "PROXY AUTH";
-    case 429: return "RATE LIMITED";
-    case 451: return "UNAVAILABLE";
+    case 407: return "PROXY";
+    case 429: return "SLOW";
+    case 451: return "BLOCKED";
     default:
-      if (status >= 400 && status < 500) return "CLIENT ERROR";
-      if (status >= 500 && status < 600) return "SERVER ERROR";
+      if (status >= 400 && status < 500) return "4XX";
+      if (status >= 500 && status < 600) return "5XX";
       return `HTTP ${status}`;
   }
 }
