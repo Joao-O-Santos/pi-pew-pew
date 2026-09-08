@@ -204,7 +204,7 @@ export class WebService {
       if (kind === "html") details.termsOfService ??= termsOfServiceHtmlHint(raw);
       const { text, ...conversion } =
         kind === "html"
-          ? await htmlToMarkdown(raw, signal, () => this.pandocExecutable(signal))
+          ? await htmlToMarkdown(raw, finalUrl, signal, () => this.pandocExecutable(signal))
           : { ...limitText(raw), format: kind, pandoc: "unavailable" as const };
       Object.assign(details, conversion);
       body = text;

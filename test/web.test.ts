@@ -4,7 +4,7 @@ import { createServer, type IncomingMessage, type Server, type ServerResponse } 
 import test from "node:test";
 import { type ChromiumResult, chromiumArguments } from "../src/chromium.js";
 import { LIMITS, USER_AGENT } from "../src/constants.js";
-import { htmlToMarkdown, pandocCandidates } from "../src/convert.js";
+import { absolutizeHtmlLinks, htmlToMarkdown, pandocCandidates } from "../src/convert.js";
 import {
   classifyTextContent,
   parseWebUrl,
@@ -57,15 +57,31 @@ test("Pandoc discovery prefers an explicit path and avoids duplicates", () => {
   assert.deepEqual(pandocCandidates("pandoc"), ["pandoc"]);
 });
 
-test("Pandoc HTML fallback remains bounded", async () => {
+test("HTML links become absolute and Pandoc fallback remains bounded", async () => {
+  assert.equal(
+    absolutizeHtmlLinks('<a href="next">Next</a>', "https://example.test/path/"),
+    '<a href="https://example.test/path/next">Next</a>',
+  );
   const converted = await htmlToMarkdown(
     `<p>${"x".repeat(LIMITS.outputBytes * 2)}</p>`,
+    "https://example.test/",
     new AbortController().signal,
     async () => undefined,
   );
   assert.equal(converted.format, "html");
   assert.equal(converted.pandoc, "unavailable");
   assert.ok(Buffer.byteLength(converted.text) <= LIMITS.outputBytes);
+});
+
+test("Pandoc removes layout wrappers while preserving absolute links", async (t) => {
+  if (!(await executableWorks("pandoc"))) return t.skip("Pandoc is not installed");
+  const converted = await htmlToMarkdown(
+    '<div class="layout"><a href="/next"><span>Next</span></a></div>',
+    "https://example.test/page",
+    new AbortController().signal,
+    async () => "pandoc",
+  );
+  assert.equal(converted.text.trim(), "[Next](https://example.test/next)");
 });
 
 test("same-origin queue serializes and releases failed work", async () => {
