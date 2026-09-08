@@ -1,4 +1,4 @@
-import { Chromium } from "./chromium.js";
+import { Chromium, SCREENSHOT_VIEWPORT } from "./chromium.js";
 import { DISALLOWED_PACING_MS, LIMITS, REFUSAL_STATUSES } from "./constants.js";
 import { htmlToMarkdown, limitText, pandocCandidates } from "./convert.js";
 import {
@@ -49,6 +49,12 @@ function metadata(details: WebDetails): string {
   if (details.pandoc) lines.push(`Pandoc: ${details.pandoc}`);
   if (details.retryAfter) lines.push(`Retry-After: ${details.retryAfter}`);
   if (details.reason) lines.push(`reason: ${details.reason}`);
+  if (details.refusalScope) lines.push(`refusal scope: ${details.refusalScope}`);
+  if (details.retryPolicy) lines.push(`retry policy: ${details.retryPolicy}`);
+  if (details.capture)
+    lines.push(
+      `capture: ${details.capture.width}x${details.capture.height} viewport; full page: ${details.capture.fullPage ? "yes" : "no"}`,
+    );
   if (details.suggestedMode) lines.push(`suggested mode: ${details.suggestedMode}`);
   return lines.join("\n");
 }
@@ -114,11 +120,17 @@ export class WebService {
         requestedUrl: initial.href,
         ...error.details,
       };
+      const recovery =
+        details.retryPolicy === "after-retry-after"
+          ? "Wait for Retry-After."
+          : details.retryPolicy === "after-confirmed-state-change"
+            ? "A new request is appropriate only after an explicit user request following a confirmed access or configuration change."
+            : "Do not retry this origin in this session.";
       return {
         content: [
           {
             type: "text",
-            text: `${metadata(details)}\n\nPEW-PEW: automated access was refused. Do not retry this site or switch modes to bypass the refusal.`,
+            text: `${metadata(details)}\n\nPEW-PEW: automated access was refused. Do not repeat the unchanged request or switch modes to bypass it. ${recovery}`,
           },
         ],
         details,
@@ -162,6 +174,8 @@ export class WebService {
         reason: `HTTP ${status} refusal`,
         status,
         retryAfter,
+        refusalScope: "request",
+        retryPolicy: status === 429 ? "after-retry-after" : "after-confirmed-state-change",
       });
     }
     if (status === 503)
@@ -188,6 +202,7 @@ export class WebService {
       const screenshot = await this.chromium.screenshot(finalUrl, signal);
       details.contentType = "image/png";
       details.format = "image";
+      details.capture = SCREENSHOT_VIEWPORT;
       if (!screenshot.screenshot) throw new Error("PEW-PEW: Chromium did not produce a screenshot");
       image = {
         type: "image",

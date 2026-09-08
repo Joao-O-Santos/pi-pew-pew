@@ -9,6 +9,8 @@ export interface ChromiumResult {
   screenshot?: Buffer;
 }
 
+export const SCREENSHOT_VIEWPORT = { width: 1280, height: 900, fullPage: false } as const;
+
 export function chromiumArguments(args: string[], url: string): string[] {
   return ["--headless=new", "--disable-gpu", ...args, url];
 }
@@ -84,7 +86,11 @@ export class Chromium {
         url,
         signal,
         "take a screenshot",
-        ["--hide-scrollbars", "--window-size=1280,900", `--screenshot=${path}`],
+        [
+          "--hide-scrollbars",
+          `--window-size=${SCREENSHOT_VIEWPORT.width},${SCREENSHOT_VIEWPORT.height}`,
+          `--screenshot=${path}`,
+        ],
         64 * 1024,
       );
       const metadata = await stat(path);

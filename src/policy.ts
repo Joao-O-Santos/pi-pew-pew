@@ -218,6 +218,8 @@ export class PolicyManager {
       throw new RefusalError(`PEW-PEW: robots.txt disallows further requests to ${url.origin}`, {
         reason: `robots.txt disallows more than ${DISALLOWED_TARGET_LIMIT} target requests per origin`,
         robots,
+        refusalScope: "origin",
+        retryPolicy: "none",
       });
     }
     const llms = await this.llmsFor(url.origin, signal);

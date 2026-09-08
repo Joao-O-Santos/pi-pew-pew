@@ -264,6 +264,9 @@ test("robots disallow permits a small user-directed budget and reports metadata"
     assert.match(text(first), /robots: disallowed/);
     assert.equal(second.details.outcome, "ok");
     assert.equal(third.details.outcome, "refused");
+    assert.equal(third.details.refusalScope, "origin");
+    assert.equal(third.details.retryPolicy, "none");
+    assert.match(text(third), /Do not retry this origin in this session/);
     assert.equal(pageRequests, 2);
   } finally {
     server.close();
@@ -324,7 +327,15 @@ test("resource HTTP refusals stop without automatic retries", async () => {
     );
     assert.equal(result.details.outcome, "refused");
     assert.equal(result.details.status, status);
-    if (status === 429) assert.equal(result.details.retryAfter, "60");
+    assert.equal(result.details.refusalScope, "request");
+    assert.equal(
+      result.details.retryPolicy,
+      status === 429 ? "after-retry-after" : "after-confirmed-state-change",
+    );
+    if (status === 429) {
+      assert.equal(result.details.retryAfter, "60");
+      assert.match(text(result), /Wait for Retry-After/);
+    } else assert.match(text(result), /confirmed access or configuration change/);
     assert.equal(requests.get(status), 1);
   }
 });
@@ -410,6 +421,8 @@ test("render and screenshot use the approved preflight final URL", async () => {
     const screenshot = await service.execute(`${origin}/start`, "screenshot");
     assert.equal(rendered.details.finalUrl, `${origin}/app`);
     assert.equal(screenshot.details.format, "image");
+    assert.deepEqual(screenshot.details.capture, { width: 1280, height: 900, fullPage: false });
+    assert.match(text(screenshot), /capture: 1280x900 viewport; full page: no/);
     assert.deepEqual(calls, [`render:${origin}/app`, `screenshot:${origin}/app`]);
     assert.equal(screenshot.content[1]?.type, "image");
   } finally {

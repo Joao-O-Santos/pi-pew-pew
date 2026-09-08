@@ -34,6 +34,9 @@ export interface WebDetails {
   truncated?: boolean;
   termsOfService?: string;
   suggestedMode?: "render";
+  refusalScope?: "request" | "origin";
+  retryPolicy?: "after-confirmed-state-change" | "after-retry-after" | "none";
+  capture?: { width: number; height: number; fullPage: boolean };
 }
 
 export interface WebResult {
