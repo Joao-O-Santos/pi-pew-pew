@@ -31,25 +31,34 @@ export class OriginQueue {
   }
 
   defer(origin: string, milliseconds: number): void {
-    this.deferredUntil.set(origin, Math.max(this.deferredUntil.get(origin) ?? 0, Date.now() + milliseconds));
+    this.deferredUntil.set(
+      origin,
+      Math.max(this.deferredUntil.get(origin) ?? 0, Date.now() + milliseconds),
+    );
   }
 
   async run<T>(origin: string, task: () => Promise<T>, signal?: AbortSignal): Promise<T> {
     const previous = this.tails.get(origin) ?? Promise.resolve();
     let release!: () => void;
-    const gate = new Promise<void>((resolve) => { release = resolve; });
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
     const tail = previous.catch(() => undefined).then(() => gate);
     this.tails.set(origin, tail);
     let entered = false;
 
     const waitFor = async (pending: Promise<void>) => {
-      if (signal?.aborted) throw signal.reason instanceof Error ? signal.reason : new Error("Operation cancelled");
+      if (signal?.aborted)
+        throw signal.reason instanceof Error ? signal.reason : new Error("Operation cancelled");
       let onAbort: (() => void) | undefined;
       try {
         await Promise.race([
           pending,
           new Promise<void>((_, reject) => {
-            onAbort = () => reject(signal!.reason instanceof Error ? signal!.reason : new Error("Operation cancelled"));
+            onAbort = () => {
+              const reason = signal?.reason;
+              reject(reason instanceof Error ? reason : new Error("Operation cancelled"));
+            };
             signal?.addEventListener("abort", onAbort, { once: true });
           }),
         ]);
@@ -72,7 +81,7 @@ export class OriginQueue {
       // A completed operation holds the origin gate for its pacing gap, while
       // its caller receives the result immediately. A cancelled waiter never
       // entered the gate, so it must not impose a delay of its own.
-      const gap = entered ? this.requestedGaps.get(origin) ?? this.minimumGapMs : 0;
+      const gap = entered ? (this.requestedGaps.get(origin) ?? this.minimumGapMs) : 0;
       this.requestedGaps.delete(origin);
       if (gap > 0) void sleep(gap).then(release, release);
       else release();

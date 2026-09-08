@@ -27,13 +27,18 @@ export function parseWebUrl(input: string): URL {
     throw new Error(`PEW-PEW: malformed URL: ${input}`);
   }
   if (url.protocol !== "http:" && url.protocol !== "https:") {
-    throw new Error(`PEW-PEW: unsupported URL protocol ${url.protocol || "(none)"}; use HTTP or HTTPS`);
+    throw new Error(
+      `PEW-PEW: unsupported URL protocol ${url.protocol || "(none)"}; use HTTP or HTTPS`,
+    );
   }
   url.hash = "";
   return url;
 }
 
-const termsOfServiceRel = new RegExp(`\\brel\\s*=\\s*(?:"[^"]*\\b${TOS_REL}\\b[^"]*"|'[^']*\\b${TOS_REL}\\b[^']*'|${TOS_REL}\\b)`, "i");
+const termsOfServiceRel = new RegExp(
+  `\\brel\\s*=\\s*(?:"[^"]*\\b${TOS_REL}\\b[^"]*"|'[^']*\\b${TOS_REL}\\b[^']*'|${TOS_REL}\\b)`,
+  "i",
+);
 
 export function termsOfServiceLinkHint(header: string | null): string | undefined {
   return header && termsOfServiceRel.test(header) ? `Link: ${header}` : undefined;
@@ -105,7 +110,8 @@ export async function fetchWithRedirects(
       redirect: "manual",
       headers: {
         "user-agent": USER_AGENT,
-        accept: "text/html,application/xhtml+xml,application/json,application/xml,text/plain;q=0.9,*/*;q=0.1",
+        accept:
+          "text/html,application/xhtml+xml,application/json,application/xml,text/plain;q=0.9,*/*;q=0.1",
       },
       signal: options.signal,
     });
@@ -113,7 +119,8 @@ export async function fetchWithRedirects(
     if (REDIRECT_STATUSES.has(response.status)) {
       const location = response.headers.get("location");
       await response.body?.cancel();
-      if (!location) throw new Error(`PEW-PEW: redirect ${response.status} did not include Location`);
+      if (!location)
+        throw new Error(`PEW-PEW: redirect ${response.status} did not include Location`);
       if (redirects >= options.maxRedirects) {
         throw new Error(`PEW-PEW: exceeded ${options.maxRedirects} redirects`);
       }
@@ -122,9 +129,11 @@ export async function fetchWithRedirects(
     }
 
     const refusal = REFUSAL_STATUSES.has(response.status) || response.status === 503;
-    const body = options.readBody === false || refusal
-      ? (await response.body?.cancel(), new Uint8Array())
-      : await readBounded(response, options.maxBytes);
+    if (options.readBody === false || refusal) await response.body?.cancel();
+    const body =
+      options.readBody === false || refusal
+        ? new Uint8Array()
+        : await readBounded(response, options.maxBytes);
     return {
       requestedUrl,
       finalUrl: current.href,
@@ -147,8 +156,10 @@ export function decodeText(bytes: Uint8Array, contentType = ""): string {
   }
 }
 
-export function classifyTextContent(contentType: string): "html" | "json" | "xml" | "text" | undefined {
-  const mime = contentType.split(";", 1)[0]!.trim().toLowerCase();
+export function classifyTextContent(
+  contentType: string,
+): "html" | "json" | "xml" | "text" | undefined {
+  const mime = contentType.split(";", 1)[0]?.trim().toLowerCase() ?? "";
   if (mime === "text/html" || mime === "application/xhtml+xml") return "html";
   if (mime === "application/json" || mime.endsWith("+json")) return "json";
   if (mime === "application/xml" || mime === "text/xml" || mime.endsWith("+xml")) return "xml";

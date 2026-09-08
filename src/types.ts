@@ -37,8 +37,7 @@ export interface WebDetails {
 
 export interface WebResult {
   content: Array<
-    | { type: "text"; text: string }
-    | { type: "image"; data: string; mimeType: string }
+    { type: "text"; text: string } | { type: "image"; data: string; mimeType: string }
   >;
   details: WebDetails;
 }

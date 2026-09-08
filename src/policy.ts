@@ -1,7 +1,19 @@
 import robotsParserModule from "robots-parser";
-import { DISALLOWED_TARGET_LIMIT, LIMITS, REDIRECT_STATUSES, ROBOTS_AGENT, USER_AGENT } from "./constants.js";
-import { parseWebUrl, readBounded, decodeText, type Authorization, type FetchImplementation } from "./http.js";
-import { RefusalError, type LlmsResult, type RobotsResult } from "./types.js";
+import {
+  DISALLOWED_TARGET_LIMIT,
+  LIMITS,
+  REDIRECT_STATUSES,
+  ROBOTS_AGENT,
+  USER_AGENT,
+} from "./constants.js";
+import {
+  type Authorization,
+  decodeText,
+  type FetchImplementation,
+  parseWebUrl,
+  readBounded,
+} from "./http.js";
+import { type LlmsResult, RefusalError, type RobotsResult } from "./types.js";
 
 interface Robot {
   isAllowed(url: string, ua?: string): boolean | undefined;
@@ -55,7 +67,8 @@ async function fetchPolicyFile(
     if (REDIRECT_STATUSES.has(response.status)) {
       const location = response.headers.get("location");
       await response.body?.cancel();
-      if (!location || redirects >= LIMITS.redirects) throw new Error("policy file redirect limit exceeded");
+      if (!location || redirects >= LIMITS.redirects)
+        throw new Error("policy file redirect limit exceeded");
       const next = parseWebUrl(new URL(location, current).href);
       if (next.origin !== initial.origin) throw new Error("policy file redirect changed origin");
       current = next;
@@ -90,7 +103,11 @@ export class PolicyManager {
       }
       if (response.status === 401 || response.status === 403) {
         return {
-          result: { state: "unavailable", status: response.status, reason: "robots.txt denied access" },
+          result: {
+            state: "unavailable",
+            status: response.status,
+            reason: "robots.txt denied access",
+          },
           cacheable: false,
         };
       }
@@ -119,21 +136,39 @@ export class PolicyManager {
   }
 
   async robotsFor(url: URL, signal: AbortSignal): Promise<RobotsResult> {
-    return fromCache(this.robotsCache, url.origin, () => this.loadRobots(url.origin, signal), (source) => {
-      if (!source.parser) return { ...source.result };
-      const allowed = source.parser.isAllowed(url.href, ROBOTS_AGENT) !== false;
-      return allowed
-        ? { ...source.result, state: "allowed" }
-        : { state: "disallowed", status: source.result.status, reason: "robots.txt disallows this URL" };
-    });
+    return fromCache(
+      this.robotsCache,
+      url.origin,
+      () => this.loadRobots(url.origin, signal),
+      (source) => {
+        if (!source.parser) return { ...source.result };
+        const allowed = source.parser.isAllowed(url.href, ROBOTS_AGENT) !== false;
+        return allowed
+          ? { ...source.result, state: "allowed" }
+          : {
+              state: "disallowed",
+              status: source.result.status,
+              reason: "robots.txt disallows this URL",
+            };
+      },
+    );
   }
 
   private async loadLlms(origin: string, signal: AbortSignal): Promise<LlmsSource> {
     try {
-      const response = await fetchPolicyFile(new URL("/llms.txt", origin), LIMITS.llmsBytes, this.fetchImpl, signal);
+      const response = await fetchPolicyFile(
+        new URL("/llms.txt", origin),
+        LIMITS.llmsBytes,
+        this.fetchImpl,
+        signal,
+      );
       if (response.status >= 200 && response.status < 300) {
         return {
-          result: { state: "found", status: response.status, text: decodeText(response.body, response.contentType) },
+          result: {
+            state: "found",
+            status: response.status,
+            text: decodeText(response.body, response.contentType),
+          },
           cacheable: true,
         };
       }
@@ -141,7 +176,12 @@ export class PolicyManager {
         return { result: { state: "absent", status: response.status }, cacheable: true };
       }
       return {
-        result: { state: "unavailable", status: response.status, retryAfter: response.retryAfter, reason: `llms.txt returned HTTP ${response.status}` },
+        result: {
+          state: "unavailable",
+          status: response.status,
+          retryAfter: response.retryAfter,
+          reason: `llms.txt returned HTTP ${response.status}`,
+        },
         cacheable: false,
       };
     } catch (error) {
@@ -157,7 +197,12 @@ export class PolicyManager {
   }
 
   async llmsFor(origin: string, signal: AbortSignal): Promise<LlmsResult> {
-    return fromCache(this.llmsCache, origin, () => this.loadLlms(origin, signal), (source) => ({ ...source.result }));
+    return fromCache(
+      this.llmsCache,
+      origin,
+      () => this.loadLlms(origin, signal),
+      (source) => ({ ...source.result }),
+    );
   }
 
   private allowDisallowedTarget(origin: string): boolean {

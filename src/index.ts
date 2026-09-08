@@ -1,7 +1,7 @@
-import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
-import { Image, Text, Container } from "@earendil-works/pi-tui";
 import { StringEnum } from "@earendil-works/pi-ai";
-import { Type, type Static } from "typebox";
+import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
+import { Container, Image, Text } from "@earendil-works/pi-tui";
+import { type Static, Type } from "typebox";
 import { parseWebUrl } from "./http.js";
 import { WebService } from "./service.js";
 import { httpStatusLabel, isSuccessfulHttpStatus } from "./status.js";
@@ -32,7 +32,8 @@ export default function pewPew(pi: ExtensionAPI) {
   pi.registerTool({
     name: "web",
     label: "web",
-    description: "Read a public or local HTTP(S) page politely. Start with mode=fetch; use mode=render only when JavaScript is needed, and mode=screenshot only when visual interpretation matters. Access is read-only, bounded, robots-aware, and does not click, type, submit, expose arbitrary JavaScript, or crawl.",
+    description:
+      "Read a public or local HTTP(S) page politely. Start with mode=fetch; use mode=render only when JavaScript is needed, and mode=screenshot only when visual interpretation matters. Access is read-only, bounded, robots-aware, and does not click, type, submit, expose arbitrary JavaScript, or crawl.",
     promptSnippet: "Read web pages with fetch → render → screenshot escalation",
     promptGuidelines: [
       "Use web with mode=fetch first.",
@@ -51,8 +52,8 @@ export default function pewPew(pi: ExtensionAPI) {
       const mode = args.mode ?? "fetch";
       return new Text(
         theme.fg("toolTitle", theme.bold("pew-pew ")) +
-        theme.fg("accent", `${mode} `) +
-        theme.fg("muted", shortHost(args.url ?? "(url)")),
+          theme.fg("accent", `${mode} `) +
+          theme.fg("muted", shortHost(args.url ?? "(url)")),
         0,
         0,
       );
@@ -60,21 +61,23 @@ export default function pewPew(pi: ExtensionAPI) {
     renderResult(result, { expanded, isPartial }, theme, context) {
       if (isPartial) return new Text(theme.fg("warning", "pew-pew → fetching..."), 0, 0);
       const details = result.details;
-      const host = shortHost(details?.finalUrl ?? details?.requestedUrl ?? context.args.url ?? "(unknown)");
+      const host = shortHost(
+        details?.finalUrl ?? details?.requestedUrl ?? context.args.url ?? "(unknown)",
+      );
       const status = details?.status;
       const statusLabel = httpStatusLabel(status);
       const format = details?.format ?? "text";
       let summary = `pew-pew → ${host} · ${statusLabel} · ${format}`;
       if (details?.outcome === "refused") {
         const robots = details.robots?.state;
-        const label = robots === "disallowed" ? "ROBOTS"
-          : robots === "unavailable" ? "ROBOTS?"
-            : statusLabel;
+        const label =
+          robots === "disallowed" ? "ROBOTS" : robots === "unavailable" ? "ROBOTS?" : statusLabel;
         summary = `pew-pew → ${host} · ${label}`;
       }
       if (details?.outcome === "failed") summary = `pew-pew → ${host} · FAIL`;
       if (!expanded) {
-        const color = details?.outcome === "ok" && isSuccessfulHttpStatus(status) ? "success" : "warning";
+        const color =
+          details?.outcome === "ok" && isSuccessfulHttpStatus(status) ? "success" : "warning";
         return new Text(theme.fg(color, summary), 0, 0);
       }
 
@@ -84,7 +87,14 @@ export default function pewPew(pi: ExtensionAPI) {
       if (text) container.addChild(new Text(text, 0, 1));
       const image = result.content.find((item) => item.type === "image");
       if (image?.type === "image" && context.showImages) {
-        container.addChild(new Image(image.data, image.mimeType, { fallbackColor: (value) => theme.fg("warning", value) }, { maxWidthCells: 100, maxHeightCells: 40 }));
+        container.addChild(
+          new Image(
+            image.data,
+            image.mimeType,
+            { fallbackColor: (value) => theme.fg("warning", value) },
+            { maxWidthCells: 100, maxHeightCells: 40 },
+          ),
+        );
       }
       return container;
     },

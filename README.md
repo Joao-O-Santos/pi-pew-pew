@@ -4,19 +4,25 @@
 
 **Small-batch read-only web access for Pi.**
 
-`pi-pew-pew` gives Pi one deliberately small `web` tool for polite, user-directed web reading. It can fetch ordinary pages, render JavaScript-backed pages with Chromium, and capture screenshots when visual inspection matters.
+`pi-pew-pew` gives Pi one deliberately small `web` tool for polite,
+user-directed web reading. It can fetch ordinary pages, render
+JavaScript-backed pages with Chromium, and capture screenshots when
+visual inspection matters.
 
-It is intentionally not a browser automation framework. It does not expose click, type, submit, arbitrary JavaScript, shell access, crawling, or browser-control primitives. Use `pi-chrome-use` when a task actually requires interaction.
+It is intentionally not a browser automation framework. It does not
+expose click, type, submit, arbitrary JavaScript, shell access,
+crawling, or browser-control primitives. Use `pi-chrome-use` when a task
+actually requires interaction.
 
 ## Install
 
-```sh
+``` sh
 pi install npm:pi-pew-pew
 ```
 
 Or install the package from GitLab while developing:
 
-```sh
+``` sh
 pi install git:https://gitlab.com/Joao-O-Santos/pi-pew-pew.git
 ```
 
@@ -24,7 +30,7 @@ pi install git:https://gitlab.com/Joao-O-Santos/pi-pew-pew.git
 
 Pi sees exactly one model-facing tool:
 
-```ts
+``` ts
 web({
   url,
   mode?: "fetch" | "render" | "screenshot"
@@ -33,41 +39,67 @@ web({
 
 Use the modes in this order:
 
-1. `fetch` — ordinary HTTP retrieval; HTML is converted to GitHub-flavored Markdown with Pandoc when available.
-2. `render` — headless Chromium's post-JavaScript DOM, converted to GitHub-flavored Markdown with Pandoc when available.
-3. `screenshot` — a PNG image, only when visual interpretation matters.
+1.  `fetch` --- ordinary HTTP retrieval; HTML is converted to
+    GitHub-flavored Markdown with Pandoc when available.
+2.  `render` --- headless Chromium's post-JavaScript DOM, converted to
+    GitHub-flavored Markdown with Pandoc when available.
+3.  `screenshot` --- a PNG image, only when visual interpretation
+    matters.
 
 The default mode is `fetch`.
 
 ## Access policy
 
-Before a page request, PEW-PEW checks and reports the origin's `robots.txt` with the honest `pi-pew-pew` user-agent. `robots.txt` is a crawler-policy signal, not a universal barrier to isolated user-directed retrieval: a disallowed target can be read twice per origin in a Pi session, then later disallowed target requests stop as crawler-like repetition. Allowed targets are not charged to that small budget. Successful policies and explicit absence are cached in memory.
+Before a page request, PEW-PEW checks and reports the origin's
+`robots.txt` with the honest `pi-pew-pew` user-agent. `robots.txt` is a
+crawler-policy signal, not a universal barrier to isolated user-directed
+retrieval: a disallowed target can be read twice per origin in a Pi
+session, then later disallowed target requests stop as crawler-like
+repetition. Allowed targets are not charged to that small budget.
+Successful policies and explicit absence are cached in memory.
 
-Actual resource-level refusals (`401`, `403`, `407`, `429`, and `451`) stop the operation without automatic retries or mode escalation. `429` surfaces and honors `Retry-After`; `503` is surfaced as a temporary failure without retry. PEW-PEW does not spoof user agents, solve CAPTCHAs, bypass anti-bot systems, reuse clearance cookies, rotate proxies, bypass authentication or paywalls, or deliberately defeat access controls. Chromium retains its native user agent.
+Actual resource-level refusals (`401`, `403`, `407`, `429`, and `451`)
+stop the operation without automatic retries or mode escalation. `429`
+surfaces and honors `Retry-After`; `503` is surfaced as a temporary
+failure without retry. PEW-PEW does not spoof user agents, solve
+CAPTCHAs, bypass anti-bot systems, reuse clearance cookies, rotate
+proxies, bypass authentication or paywalls, or deliberately defeat
+access controls. Chromium retains its native user agent.
 
-When `/llms.txt` exists, its bounded contents are returned separately inside a generated contextual boundary as untrusted website metadata. It cannot override the user's task or higher-priority instructions; statements about AI training or bots do not by themselves prohibit an isolated read. When a response already advertises a standardized `terms-of-service` link through an HTTP `Link` header or HTML `<link>` tag, PEW-PEW surfaces the raw hint for model interpretation. It neither parses nor fetches the ToS automatically.
+When `/llms.txt` exists, its bounded contents are returned separately
+inside a generated contextual boundary as untrusted website metadata. It
+cannot override the user's task or higher-priority instructions;
+statements about AI training or bots do not by themselves prohibit an
+isolated read. When a response already advertises a standardized
+`terms-of-service` link through an HTTP `Link` header or HTML `<link>`
+tag, PEW-PEW surfaces the raw hint for model interpretation. It neither
+parses nor fetches the ToS automatically.
 
 ## Optional programs
 
 `render` and `screenshot` discover Chromium in this order:
 
-```text
+``` text
 PEW_PEW_CHROMIUM
 chromium
 chromium-browser
 google-chrome
 ```
 
-Set `PEW_PEW_CHROMIUM` to an explicit executable path when needed. If Chromium is unavailable, use an interactive browser extension such as `pi-chrome-use` for tasks requiring browser automation.
+Set `PEW_PEW_CHROMIUM` to an explicit executable path when needed. If
+Chromium is unavailable, use an interactive browser extension such as
+`pi-chrome-use` for tasks requiring browser automation.
 
 HTML conversion discovers Pandoc in this order:
 
-```text
+``` text
 PEW_PEW_PANDOC
 pandoc
 ```
 
-Set `PEW_PEW_PANDOC` to an explicit executable path when needed. Pandoc is optional. If it is unavailable or conversion fails, PEW-PEW returns bounded HTML instead of losing the page.
+Set `PEW_PEW_PANDOC` to an explicit executable path when needed. Pandoc
+is optional. If it is unavailable or conversion fails, PEW-PEW returns
+bounded HTML instead of losing the page.
 
 ## Limits
 
@@ -84,17 +116,29 @@ PEW-PEW intentionally bounds work and output:
 - Chromium DOM: 2 MiB
 - screenshot: 10 MiB
 
-Cancellation propagates to body reads, Pandoc, and Chromium. Temporary screenshots are removed even when cancelled or failed.
+Cancellation propagates to body reads, Pandoc, and Chromium. Temporary
+screenshots are removed even when cancelled or failed.
 
 ## Development
 
-```sh
+``` sh
 npm ci
-npm run typecheck
-npm test
+npm run check
 npm pack --dry-run
 ```
 
-The test suite uses deterministic local HTTP servers and does not require network access. Chromium-specific integration tests run only when a Chromium executable is available.
+`npm run check` runs TypeScript typechecking, Biome linting and format
+verification, the Pandoc Markdown check, and the test suite. Use
+`npm run format:fix` or `npm run markdown:fix` to update local
+formatting. The Markdown check covers the public README; temporary
+planning files are not part of the published documentation surface.
 
-GitLab CI runs `npm ci`, typechecking, the test suite, and `npm pack --dry-run` on every configured pipeline.
+The test suite uses deterministic local HTTP servers and does not
+require network access. Chromium-specific integration tests run only
+when a Chromium executable is available. Markdown checks require Pandoc
+3.10.1 or newer.
+
+GitLab CI installs the current stable Pandoc release, then runs the same
+`npm run check` and package dry run on every configured pipeline. The
+Pages job renders this README with Pandoc and publishes it with
+`logo.png`.

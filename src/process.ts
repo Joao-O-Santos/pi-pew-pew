@@ -1,4 +1,4 @@
-import { spawn } from "node:child_process";
+import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
 
 export interface ProcessOptions {
   signal?: AbortSignal;
@@ -43,7 +43,7 @@ export function runProcess(
 ): Promise<ProcessResult> {
   return new Promise((resolve, reject) => {
     const operation = controlledSignal(options.signal, options.timeoutMs);
-    let child;
+    let child: ChildProcessWithoutNullStreams;
     try {
       child = spawn(command, [...args], {
         cwd: options.cwd,
@@ -97,7 +97,9 @@ export function runProcess(
       }
       stderr.push(chunk);
     });
-    child.on("error", (error) => { failure ??= error; });
+    child.on("error", (error) => {
+      failure ??= error;
+    });
     child.on("close", (code) => {
       operation.signal.removeEventListener("abort", onAbort);
       operation.dispose();

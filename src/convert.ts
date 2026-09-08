@@ -23,7 +23,7 @@ export function limitText(
 ): { text: string; truncated: boolean } {
   const lines = text.split("\n");
   let output = lines.slice(0, maxLines).join("\n");
-  let truncated = lines.length > maxLines || Buffer.byteLength(output) > maxBytes;
+  const truncated = lines.length > maxLines || Buffer.byteLength(output) > maxBytes;
   if (!truncated) return { text: output, truncated: false };
 
   const notice = "\n\n[PEW-PEW: output truncated]";
@@ -55,7 +55,8 @@ export async function htmlToMarkdown(
       maxStderrBytes: LIMITS.processStderrBytes,
       stdin: html,
     });
-    if (result.code !== 0) throw new Error(result.stderr.toString("utf8").trim() || `exit code ${result.code}`);
+    if (result.code !== 0)
+      throw new Error(result.stderr.toString("utf8").trim() || `exit code ${result.code}`);
     const limited = limitText(result.stdout.toString("utf8"));
     return { ...limited, format: "markdown", pandoc: "converted" };
   } catch (error) {

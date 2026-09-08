@@ -1,10 +1,18 @@
+import { Chromium } from "./chromium.js";
 import { DISALLOWED_PACING_MS, LIMITS, REFUSAL_STATUSES } from "./constants.js";
 import { htmlToMarkdown, limitText, pandocCandidates } from "./convert.js";
-import { Chromium } from "./chromium.js";
-import { fetchWithRedirects, classifyTextContent, decodeText, parseWebUrl, termsOfServiceHtmlHint, type FetchImplementation, type HttpResult } from "./http.js";
-import { OriginQueue } from "./queue.js";
-import { controlledSignal, executableWorks } from "./process.js";
+import {
+  classifyTextContent,
+  decodeText,
+  type FetchImplementation,
+  fetchWithRedirects,
+  type HttpResult,
+  parseWebUrl,
+  termsOfServiceHtmlHint,
+} from "./http.js";
 import { PolicyManager } from "./policy.js";
+import { controlledSignal, executableWorks } from "./process.js";
+import { OriginQueue } from "./queue.js";
 import { RefusalError, type WebDetails, type WebMode, type WebResult } from "./types.js";
 
 export function wrapLlms(text: string): string {
@@ -81,17 +89,37 @@ export class WebService {
     }
   }
 
-  async execute(requestedUrl: string, mode: WebMode, parentSignal?: AbortSignal): Promise<WebResult> {
+  async execute(
+    requestedUrl: string,
+    mode: WebMode,
+    parentSignal?: AbortSignal,
+  ): Promise<WebResult> {
     const initial = parseWebUrl(requestedUrl);
-    const operation = controlledSignal(parentSignal, mode === "fetch" ? LIMITS.fetchTimeoutMs : LIMITS.chromiumTimeoutMs);
+    const operation = controlledSignal(
+      parentSignal,
+      mode === "fetch" ? LIMITS.fetchTimeoutMs : LIMITS.chromiumTimeoutMs,
+    );
     try {
-      return await this.queue.run(initial.origin,
-        () => this.retrieve(initial.href, mode, operation.signal), operation.signal);
+      return await this.queue.run(
+        initial.origin,
+        () => this.retrieve(initial.href, mode, operation.signal),
+        operation.signal,
+      );
     } catch (error) {
       if (!(error instanceof RefusalError)) throw error;
-      const details: WebDetails = { outcome: "refused", mode, requestedUrl: initial.href, ...error.details };
+      const details: WebDetails = {
+        outcome: "refused",
+        mode,
+        requestedUrl: initial.href,
+        ...error.details,
+      };
       return {
-        content: [{ type: "text", text: `${metadata(details)}\n\nPEW-PEW: automated access was refused. Do not retry this site or switch modes to bypass the refusal.` }],
+        content: [
+          {
+            type: "text",
+            text: `${metadata(details)}\n\nPEW-PEW: automated access was refused. Do not retry this site or switch modes to bypass the refusal.`,
+          },
+        ],
         details,
       };
     } finally {
@@ -117,20 +145,40 @@ export class WebService {
       }
       throw error;
     }
-    const { requestedUrl, finalUrl, status, contentType, retryAfter, authorization, termsOfService } = result;
+    const {
+      requestedUrl,
+      finalUrl,
+      status,
+      contentType,
+      retryAfter,
+      authorization,
+      termsOfService,
+    } = result;
     if (REFUSAL_STATUSES.has(status)) {
       const delay = retryAfterMs(retryAfter);
       if (delay !== undefined) this.queue.defer(origin, delay);
       throw new RefusalError(`PEW-PEW: site refused automated access with HTTP ${status}`, {
-        reason: `HTTP ${status} refusal`, status, retryAfter,
+        reason: `HTTP ${status} refusal`,
+        status,
+        retryAfter,
       });
     }
-    if (status === 503) throw new Error("PEW-PEW: site returned transient HTTP 503; no automatic retry was attempted");
+    if (status === 503)
+      throw new Error(
+        "PEW-PEW: site returned transient HTTP 503; no automatic retry was attempted",
+      );
 
     const { text: llmsText, ...llms } = authorization.llms;
     const details: WebDetails = {
-      outcome: "ok", mode, requestedUrl, finalUrl, status, contentType,
-      robots: authorization.robots, llms, termsOfService,
+      outcome: "ok",
+      mode,
+      requestedUrl,
+      finalUrl,
+      status,
+      contentType,
+      robots: authorization.robots,
+      llms,
+      termsOfService,
     };
     if (authorization.robots.state === "disallowed") this.queue.pace(origin, DISALLOWED_PACING_MS);
     let body: string | undefined;
@@ -139,17 +187,25 @@ export class WebService {
       const screenshot = await this.chromium.screenshot(finalUrl, signal);
       details.contentType = "image/png";
       details.format = "image";
-      image = { type: "image", data: screenshot.screenshot!.toString("base64"), mimeType: "image/png" };
+      if (!screenshot.screenshot) throw new Error("PEW-PEW: Chromium did not produce a screenshot");
+      image = {
+        type: "image",
+        data: screenshot.screenshot.toString("base64"),
+        mimeType: "image/png",
+      };
     } else {
       const kind = mode === "render" ? "html" : classifyTextContent(contentType);
-      if (!kind) throw new Error(`PEW-PEW: unsupported binary content type ${contentType || "(missing)"}`);
-      const raw = mode === "render"
-        ? (await this.chromium.render(finalUrl, signal)).dom ?? ""
-        : decodeText(result.body, contentType);
+      if (!kind)
+        throw new Error(`PEW-PEW: unsupported binary content type ${contentType || "(missing)"}`);
+      const raw =
+        mode === "render"
+          ? ((await this.chromium.render(finalUrl, signal)).dom ?? "")
+          : decodeText(result.body, contentType);
       if (kind === "html") details.termsOfService ??= termsOfServiceHtmlHint(raw);
-      const { text, ...conversion } = kind === "html"
-        ? await htmlToMarkdown(raw, signal, () => this.pandocExecutable(signal))
-        : { ...limitText(raw), format: kind, pandoc: "unavailable" as const };
+      const { text, ...conversion } =
+        kind === "html"
+          ? await htmlToMarkdown(raw, signal, () => this.pandocExecutable(signal))
+          : { ...limitText(raw), format: kind, pandoc: "unavailable" as const };
       Object.assign(details, conversion);
       body = text;
     }

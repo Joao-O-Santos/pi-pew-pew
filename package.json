@@ -32,7 +32,14 @@
   },
   "scripts": {
     "test": "node --import tsx --test test/*.test.ts",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "lint": "biome lint .",
+    "format:check": "biome ci --linter-enabled=false --assist-enabled=false .",
+    "format:fix": "biome check --write .",
+    "markdown:check": "node scripts/format-markdown.mjs",
+    "markdown:fix": "node scripts/format-markdown.mjs --write",
+    "style": "npm run lint && npm run format:check && npm run markdown:check",
+    "check": "npm run typecheck && npm run style && npm test"
   },
   "pi": {
     "extensions": [
@@ -49,6 +56,7 @@
     "typebox": "*"
   },
   "devDependencies": {
+    "@biomejs/biome": "^2.5.12",
     "@earendil-works/pi-ai": "0.85.1",
     "@earendil-works/pi-coding-agent": "0.85.1",
     "@earendil-works/pi-tui": "0.85.1",
