@@ -1,0 +1,126 @@
+:root {
+  color-scheme: light dark;
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  line-height: 1.65;
+  font-weight: 400;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: #f6f8fa;
+  color: #1f2328;
+}
+
+main {
+  width: min(900px, calc(100% - 2rem));
+  margin: 3rem auto;
+  padding: clamp(1.5rem, 4vw, 3.5rem);
+  background: #ffffff;
+  border: 1px solid #d0d7de;
+  border-radius: 18px;
+  box-shadow: 0 10px 35px rgb(31 35 40 / 8%);
+}
+
+h1,
+h2 {
+  line-height: 1.25;
+  border-bottom: 1px solid #d8dee4;
+  padding-bottom: 0.35em;
+}
+
+h1 {
+  margin-top: 0;
+  font-size: clamp(2rem, 6vw, 3.2rem);
+}
+
+h2 {
+  margin-top: 2.2em;
+  font-size: 1.5rem;
+}
+
+p,
+ul,
+ol,
+pre {
+  margin-block: 1em;
+}
+
+a {
+  color: #0969da;
+}
+
+a:hover {
+  text-decoration-thickness: 2px;
+}
+
+img {
+  display: block;
+  max-width: min(420px, 100%);
+  height: auto;
+  margin: 1.5rem auto 2rem;
+  border-radius: 20px;
+}
+
+code {
+  padding: 0.15em 0.35em;
+  border-radius: 6px;
+  background: #eff1f3;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.92em;
+}
+
+pre {
+  overflow-x: auto;
+  padding: 1rem 1.15rem;
+  border: 1px solid #d0d7de;
+  border-radius: 10px;
+  background: #f6f8fa;
+}
+
+pre code {
+  padding: 0;
+  background: transparent;
+}
+
+li + li {
+  margin-top: 0.35em;
+}
+
+strong {
+  font-weight: 650;
+}
+
+@media (prefers-color-scheme: dark) {
+  body {
+    background: #0d1117;
+    color: #e6edf3;
+  }
+
+  main {
+    background: #161b22;
+    border-color: #30363d;
+    box-shadow: none;
+  }
+
+  h1,
+  h2 {
+    border-color: #30363d;
+  }
+
+  a {
+    color: #58a6ff;
+  }
+
+  code {
+    background: #262c36;
+  }
+
+  pre {
+    background: #0d1117;
+    border-color: #30363d;
+  }
+}

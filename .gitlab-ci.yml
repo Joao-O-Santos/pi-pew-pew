@@ -41,8 +41,10 @@ pages:
   script:
     - npm ci
     - mkdir -p public
-    - npx --yes markdown-it README.md > public/index.html
-    - cp logo.png public/logo.png
+    - printf '%s\n' '<!doctype html>' '<html lang="en">' '<head>' '<meta charset="utf-8">' '<meta name="viewport" content="width=device-width, initial-scale=1">' '<title>pi-pew-pew</title>' '<link rel="stylesheet" href="pages.css">' '</head>' '<body>' '<main>' > public/index.html
+    - npx --yes markdown-it README.md >> public/index.html
+    - printf '%s\n' '</main>' '</body>' '</html>' >> public/index.html
+    - cp logo.png pages.css public/
   artifacts:
     paths:
       - public
