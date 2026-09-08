@@ -40,6 +40,7 @@ pages:
     - if: '$CI_COMMIT_TAG =~ /^v\d+\.\d+\.\d+(-[0-9A-Za-z.-]+)?$/'
   script:
     - npm ci
+    - mkdir -p public
     - npx --yes markdown-it README.md > public/index.html
     - cp logo.png public/logo.png
   artifacts:
