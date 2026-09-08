@@ -43,10 +43,12 @@ Use the modes in this order:
     GitHub-flavored Markdown with Pandoc when available.
 2.  `render` --- headless Chromium's post-JavaScript DOM, converted to
     GitHub-flavored Markdown with Pandoc when available.
-3.  `screenshot` --- a PNG image, only when visual interpretation
-    matters.
+3.  `screenshot` --- a 1280x900 viewport PNG, only when visual
+    interpretation matters. It is not a full-page capture.
 
-The default mode is `fetch`.
+The default mode is `fetch`. `fetch` may suggest `render` when the HTML
+looks like a sparse JavaScript shell. Returned links are absolute, so a
+follow-up request is unambiguous.
 
 ## Access policy
 
@@ -59,12 +61,16 @@ repetition. Allowed targets are not charged to that small budget.
 Successful policies and explicit absence are cached in memory.
 
 Actual resource-level refusals (`401`, `403`, `407`, `429`, and `451`)
-stop the operation without automatic retries or mode escalation. `429`
-surfaces and honors `Retry-After`; `503` is surfaced as a temporary
-failure without retry. PEW-PEW does not spoof user agents, solve
-CAPTCHAs, bypass anti-bot systems, reuse clearance cookies, rotate
-proxies, bypass authentication or paywalls, or deliberately defeat
-access controls. Chromium retains its native user agent.
+stop the operation without automatic retries or mode escalation. A
+refusal identifies whether it applies to one request or the origin, and
+states whether to wait for `Retry-After`, wait for a confirmed access or
+configuration change plus an explicit user request, or stop for the
+session. `503` is surfaced as a temporary failure without retry.
+
+PEW-PEW does not spoof user agents, solve CAPTCHAs, bypass anti-bot
+systems, reuse clearance cookies, rotate proxies, bypass authentication
+or paywalls, or deliberately defeat access controls. Chromium retains
+its native user agent.
 
 When `/llms.txt` exists, its bounded contents are returned separately
 inside a generated contextual boundary as untrusted website metadata. It
