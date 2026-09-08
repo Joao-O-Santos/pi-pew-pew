@@ -49,6 +49,7 @@ function metadata(details: WebDetails): string {
   if (details.pandoc) lines.push(`Pandoc: ${details.pandoc}`);
   if (details.retryAfter) lines.push(`Retry-After: ${details.retryAfter}`);
   if (details.reason) lines.push(`reason: ${details.reason}`);
+  if (details.suggestedMode) lines.push(`suggested mode: ${details.suggestedMode}`);
   return lines.join("\n");
 }
 
@@ -208,20 +209,26 @@ export class WebService {
           : { ...limitText(raw), format: kind, pandoc: "unavailable" as const };
       Object.assign(details, conversion);
       body = text;
+      if (mode === "fetch" && kind === "html" && /<script\b/i.test(raw) && text.length < 500)
+        details.suggestedMode = "render";
     }
 
-    const llmsOutput = llmsText ? limitText(llmsText, 12 * 1024) : undefined;
+    const llmsOutput = llmsText ? limitText(llmsText, LIMITS.llmsOutputBytes) : undefined;
+    const llmsBlock = llmsOutput ? `\n\n${wrapLlms(llmsOutput.text)}` : "";
     details.truncated = Boolean(details.truncated || llmsOutput?.truncated);
     let text = metadata(details);
-    if (llmsOutput) text += `\n\n${wrapLlms(llmsOutput.text)}`;
     if (body !== undefined) {
       const start = "\n\n===== BEGIN page =====\n";
       const end = "\n===== END page =====";
-      const budget = Math.max(0, LIMITS.outputBytes - Buffer.byteLength(text + start + end));
+      const budget = Math.max(
+        0,
+        LIMITS.outputBytes - Buffer.byteLength(text + start + end + llmsBlock),
+      );
       const page = limitText(body, budget);
       details.truncated ||= page.truncated;
       text += start + page.text + end;
     }
+    text += llmsBlock;
     const content: WebResult["content"] = [{ type: "text", text }];
     if (image) content.push(image);
     return { content, details };

@@ -194,7 +194,7 @@ test("fetch returns final URL, markdown/html, and bounded llms context", async (
     } else if (request.url === "/page") {
       pageUserAgent = request.headers["user-agent"];
       response.setHeader("content-type", "text/html; charset=utf-8");
-      response.end("<h1>Hello</h1><p>Local page</p>");
+      response.end('<h1>Hello</h1><p>Local page</p><script src="/app.js"></script>');
     }
   });
   try {
@@ -206,6 +206,8 @@ test("fetch returns final URL, markdown/html, and bounded llms context", async (
     assert.match(text(result), /BEGIN llms\.txt/);
     assert.match(text(result), /Useful navigation notes/);
     assert.match(text(result), /Hello/);
+    assert.ok(text(result).indexOf("Hello") < text(result).indexOf("BEGIN llms.txt"));
+    assert.equal(result.details.suggestedMode, "render");
     assert.equal(pageUserAgent, USER_AGENT);
     assert.ok(Buffer.byteLength(text(result)) <= 50 * 1024);
   } finally {

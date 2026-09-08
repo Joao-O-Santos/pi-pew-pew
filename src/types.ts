@@ -33,6 +33,7 @@ export interface WebDetails {
   reason?: string;
   truncated?: boolean;
   termsOfService?: string;
+  suggestedMode?: "render";
 }
 
 export interface WebResult {
