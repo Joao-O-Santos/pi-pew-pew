@@ -1,4 +1,4 @@
-export const USER_AGENT = "pi-pew-pew/0.2";
+export const USER_AGENT = "pi-pew-pew/0.3";
 export const PACING_MS = 750;
 export const DISALLOWED_PACING_MS = 2_750;
 export const DISALLOWED_TARGET_LIMIT = 2;
@@ -19,6 +19,7 @@ export const LIMITS = {
   pandocTimeoutMs: 10_000,
   chromiumTimeoutMs: 30_000,
   chromiumBytes: 2 * 1024 * 1024,
+  localFileBytes: 256 * 1024 * 1024,
   screenshotBytes: 10 * 1024 * 1024,
   processStderrBytes: 64 * 1024,
 } as const;

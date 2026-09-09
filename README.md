@@ -43,8 +43,9 @@ Use the modes in this order:
     GitHub-flavored Markdown with Pandoc when available.
 2.  `render` --- headless Chromium's post-JavaScript DOM, converted to
     GitHub-flavored Markdown with Pandoc when available.
-3.  `screenshot` --- a 1280x900 viewport PNG, only when visual
-    interpretation matters. It is not a full-page capture.
+3.  `screenshot` --- a 1280x900 viewport PNG of an HTTP(S) page or local
+    `file://` URL, only when visual interpretation matters. It is not a
+    full-page capture.
 
 The default mode is `fetch`. `fetch` may suggest `render` when the HTML
 looks like a sparse JavaScript shell. Returned links are absolute, so a
@@ -52,7 +53,7 @@ follow-up request is unambiguous.
 
 ## Access policy
 
-Before a page request, PEW-PEW checks and reports the origin's
+Before an HTTP(S) page request, PEW-PEW checks and reports the origin's
 `robots.txt` with the honest `pi-pew-pew` user-agent. `robots.txt` is a
 crawler-policy signal, not a universal barrier to isolated user-directed
 retrieval: a disallowed target can be read twice per origin in a Pi
@@ -96,6 +97,18 @@ Set `PEW_PEW_CHROMIUM` to an explicit executable path when needed. If
 Chromium is unavailable, use an interactive browser extension such as
 `pi-chrome-use` for tasks requiring browser automation.
 
+For local documents such as PDFs, pass an absolute `file://` URL with
+`mode: "screenshot"`:
+
+``` ts
+web({ url: "file:///home/me/document.pdf#page=2", mode: "screenshot" })
+```
+
+Local files bypass HTTP preflight because they have no HTTP origin. Only
+screenshots are supported for local files, and the file must be no
+larger than 256 MiB. A PDF fragment such as `#page=2` can select a page
+in Chromium's PDF viewer.
+
 HTML conversion discovers Pandoc in this order:
 
 ``` text
@@ -120,6 +133,7 @@ PEW-PEW intentionally bounds work and output:
 - Pandoc conversion: 10 seconds
 - Chromium operation: 30 seconds
 - Chromium DOM: 2 MiB
+- local screenshot input: 256 MiB
 - screenshot: 10 MiB
 
 Cancellation propagates to body reads, Pandoc, and Chromium. Temporary

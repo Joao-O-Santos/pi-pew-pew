@@ -21,6 +21,7 @@ export interface LlmsResult {
 export interface WebDetails {
   outcome: WebOutcome;
   mode: WebMode;
+  source?: "http" | "local";
   requestedUrl: string;
   finalUrl?: string;
   status?: number;

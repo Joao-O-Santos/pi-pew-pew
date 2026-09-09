@@ -1,3 +1,5 @@
+import { stat } from "node:fs/promises";
+import { fileURLToPath } from "node:url";
 import { Chromium, SCREENSHOT_VIEWPORT } from "./chromium.js";
 import { DISALLOWED_PACING_MS, LIMITS, REFUSAL_STATUSES } from "./constants.js";
 import { htmlToMarkdown, limitText, pandocCandidates } from "./convert.js";
@@ -101,12 +103,15 @@ export class WebService {
     mode: WebMode,
     parentSignal?: AbortSignal,
   ): Promise<WebResult> {
-    const initial = parseWebUrl(requestedUrl);
+    const initial = parseWebUrl(requestedUrl, { allowFile: mode === "screenshot" });
     const operation = controlledSignal(
       parentSignal,
       mode === "fetch" ? LIMITS.fetchTimeoutMs : LIMITS.chromiumTimeoutMs,
     );
     try {
+      if (initial.protocol === "file:") {
+        return await this.retrieveLocalScreenshot(initial, operation.signal);
+      }
       return await this.queue.run(
         initial.origin,
         () => this.retrieve(initial.href, mode, operation.signal),
@@ -138,6 +143,51 @@ export class WebService {
     } finally {
       operation.dispose();
     }
+  }
+
+  private async retrieveLocalScreenshot(url: URL, signal: AbortSignal): Promise<WebResult> {
+    let path: string;
+    try {
+      path = fileURLToPath(url);
+    } catch {
+      throw new Error(`PEW-PEW: local file URL must refer to a local path: ${url.href}`);
+    }
+    let file: Awaited<ReturnType<typeof stat>>;
+    try {
+      file = await stat(path);
+    } catch {
+      throw new Error(`PEW-PEW: local file could not be read: ${url.href}`);
+    }
+    if (!file.isFile()) throw new Error(`PEW-PEW: local path is not a regular file: ${url.href}`);
+    if (file.size > LIMITS.localFileBytes) {
+      throw new Error(`PEW-PEW: local file exceeds the ${LIMITS.localFileBytes}-byte limit`);
+    }
+
+    const details: WebDetails = {
+      outcome: "ok",
+      mode: "screenshot",
+      source: "local",
+      requestedUrl: url.href,
+      finalUrl: url.href,
+      contentType: "image/png",
+      format: "image",
+      capture: SCREENSHOT_VIEWPORT,
+    };
+    const image = await this.captureScreenshot(url.href, signal);
+    return { content: [{ type: "text", text: metadata(details) }, image], details };
+  }
+
+  private async captureScreenshot(
+    url: string,
+    signal: AbortSignal,
+  ): Promise<Extract<WebResult["content"][number], { type: "image" }>> {
+    const screenshot = await this.chromium.screenshot(url, signal);
+    if (!screenshot.screenshot) throw new Error("PEW-PEW: Chromium did not produce a screenshot");
+    return {
+      type: "image",
+      data: screenshot.screenshot.toString("base64"),
+      mimeType: "image/png",
+    };
   }
 
   private async retrieve(url: string, mode: WebMode, signal: AbortSignal): Promise<WebResult> {
@@ -187,6 +237,7 @@ export class WebService {
     const details: WebDetails = {
       outcome: "ok",
       mode,
+      source: "http",
       requestedUrl,
       finalUrl,
       status,
@@ -199,16 +250,10 @@ export class WebService {
     let body: string | undefined;
     let image: WebResult["content"][number] | undefined;
     if (mode === "screenshot") {
-      const screenshot = await this.chromium.screenshot(finalUrl, signal);
       details.contentType = "image/png";
       details.format = "image";
       details.capture = SCREENSHOT_VIEWPORT;
-      if (!screenshot.screenshot) throw new Error("PEW-PEW: Chromium did not produce a screenshot");
-      image = {
-        type: "image",
-        data: screenshot.screenshot.toString("base64"),
-        mimeType: "image/png",
-      };
+      image = await this.captureScreenshot(finalUrl, signal);
     } else {
       const kind = mode === "render" ? "html" : classifyTextContent(contentType);
       if (!kind)

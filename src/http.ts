@@ -19,19 +19,21 @@ export interface HttpResult {
   termsOfService?: string;
 }
 
-export function parseWebUrl(input: string): URL {
+export function parseWebUrl(input: string, options: { allowFile?: boolean } = {}): URL {
   let url: URL;
   try {
     url = new URL(input);
   } catch {
     throw new Error(`PEW-PEW: malformed URL: ${input}`);
   }
-  if (url.protocol !== "http:" && url.protocol !== "https:") {
+  const supported = url.protocol === "http:" || url.protocol === "https:";
+  const localFile = options.allowFile && url.protocol === "file:";
+  if (!supported && !localFile) {
     throw new Error(
-      `PEW-PEW: unsupported URL protocol ${url.protocol || "(none)"}; use HTTP or HTTPS`,
+      `PEW-PEW: unsupported URL protocol ${url.protocol || "(none)"}; use HTTP or HTTPS${options.allowFile ? " or a local file for screenshots" : ""}`,
     );
   }
-  url.hash = "";
+  if (!localFile) url.hash = "";
   return url;
 }
 

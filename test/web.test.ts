@@ -1,7 +1,11 @@
 import assert from "node:assert/strict";
 import { once } from "node:events";
+import { mkdtemp, rm, truncate, writeFile } from "node:fs/promises";
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import test from "node:test";
+import { pathToFileURL } from "node:url";
 import { type ChromiumResult, chromiumArguments } from "../src/chromium.js";
 import { LIMITS, USER_AGENT } from "../src/constants.js";
 import { absolutizeHtmlLinks, htmlToMarkdown, pandocCandidates } from "../src/convert.js";
@@ -39,6 +43,7 @@ function text(result: { content: Array<{ type: string; text?: string }> }): stri
 test("URL and content-type validation", () => {
   assert.equal(parseWebUrl("https://example.test/a#fragment").hash, "");
   assert.throws(() => parseWebUrl("file:///etc/passwd"), /HTTP or HTTPS/);
+  assert.equal(parseWebUrl("file:///tmp/document.pdf#page=2", { allowFile: true }).hash, "#page=2");
   assert.equal(classifyTextContent("application/vnd.api+json"), "json");
   assert.equal(classifyTextContent("application/octet-stream"), undefined);
   assert.equal(
@@ -428,6 +433,80 @@ test("render and screenshot use the approved preflight final URL", async () => {
   } finally {
     server.close();
     await once(server, "close");
+  }
+});
+
+test("local file screenshots bypass HTTP preflight and enforce a size limit", async () => {
+  const directory = await mkdtemp(join(tmpdir(), "pi-pew-pew-test-"));
+  const documentPath = join(directory, "document.pdf");
+  const oversizedPath = join(directory, "oversized.pdf");
+  await writeFile(documentPath, "%PDF-1.7\nlocal test\n");
+  await writeFile(oversizedPath, "x");
+  await truncate(oversizedPath, LIMITS.localFileBytes + 1);
+  const calls: string[] = [];
+  const fakeChromium = {
+    screenshot: async (url: string): Promise<ChromiumResult> => {
+      calls.push(url);
+      return { screenshot: Buffer.from("png") };
+    },
+  };
+  const fetch = async (): Promise<Response> => {
+    throw new Error("HTTP preflight should not run for local screenshots");
+  };
+  try {
+    const service = new WebService(fetch as typeof globalThis.fetch, fakeChromium as never);
+    const url = `${pathToFileURL(documentPath).href}#page=2`;
+    await assert.rejects(service.execute(url, "fetch"), /HTTP or HTTPS/);
+    await assert.rejects(service.execute(url, "render"), /HTTP or HTTPS/);
+    const result = await service.execute(url, "screenshot");
+    assert.equal(result.details.outcome, "ok");
+    assert.equal(result.details.source, "local");
+    assert.equal(result.details.finalUrl, url);
+    assert.equal(result.details.status, undefined);
+    assert.equal(result.details.format, "image");
+    assert.deepEqual(result.details.capture, { width: 1280, height: 900, fullPage: false });
+    assert.equal(result.content[1]?.type, "image");
+    assert.deepEqual(calls, [url]);
+    await assert.rejects(
+      service.execute(pathToFileURL(oversizedPath).href, "screenshot"),
+      /local file exceeds/,
+    );
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
+test("local screenshot cancellation reaches Chromium", async () => {
+  const directory = await mkdtemp(join(tmpdir(), "pi-pew-pew-test-"));
+  const documentPath = join(directory, "document.pdf");
+  await writeFile(documentPath, "%PDF-1.7\nlocal test\n");
+  let chromiumSignal: AbortSignal | undefined;
+  const fakeChromium = {
+    screenshot: async (_url: string, signal: AbortSignal): Promise<ChromiumResult> => {
+      chromiumSignal = signal;
+      return new Promise((_, reject) => {
+        const abort = () => reject(signal.reason);
+        signal.addEventListener("abort", abort, { once: true });
+        if (signal.aborted) abort();
+      });
+    },
+  };
+  const parent = new AbortController();
+  const fetch = async (): Promise<Response> => {
+    throw new Error("HTTP preflight should not run for local screenshots");
+  };
+  try {
+    const pending = new WebService(fetch as typeof globalThis.fetch, fakeChromium as never).execute(
+      pathToFileURL(documentPath).href,
+      "screenshot",
+      parent.signal,
+    );
+    await new Promise<void>((resolve) => setImmediate(resolve));
+    parent.abort(new Error("cancelled"));
+    await assert.rejects(pending, /cancelled/);
+    assert.ok(chromiumSignal?.aborted);
+  } finally {
+    await rm(directory, { recursive: true, force: true });
   }
 });
 
