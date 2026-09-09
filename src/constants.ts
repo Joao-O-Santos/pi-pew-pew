@@ -1,4 +1,4 @@
-export const USER_AGENT = "pi-pew-pew/0.3";
+export const USER_AGENT = "pi-pew-pew/0.4";
 export const PACING_MS = 750;
 export const DISALLOWED_PACING_MS = 2_750;
 export const DISALLOWED_TARGET_LIMIT = 2;
