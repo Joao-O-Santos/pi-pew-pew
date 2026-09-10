@@ -61,6 +61,11 @@ session, then later disallowed target requests stop as crawler-like
 repetition. Allowed targets are not charged to that small budget.
 Successful policies and explicit absence are cached in memory.
 
+HTTP(S) work is serialized per origin. Ordinary requests leave at least
+750 ms before the next request to the same origin; after a
+robots-disallowed target, that gap increases to at least 2.75 seconds.
+A valid `Retry-After` can defer that origin for longer.
+
 Actual resource-level refusals (`401`, `403`, `407`, `429`, and `451`)
 observed by PEW-PEW's HTTP request stop the operation without automatic
 retries or mode escalation. A refusal identifies whether it applies to
@@ -81,14 +86,15 @@ systems, reuse clearance cookies, rotate proxies, bypass authentication
 or paywalls, or deliberately defeat access controls. Chromium retains
 its native user agent.
 
-When `/llms.txt` exists, its bounded contents are returned separately
-inside a generated contextual boundary as untrusted website metadata. It
-cannot override the user's task or higher-priority instructions;
-statements about AI training or bots do not by themselves prohibit an
-isolated read. When a response already advertises a standardized
-`terms-of-service` link through an HTTP `Link` header or HTML `<link>`
-tag, PEW-PEW surfaces the raw hint for model interpretation. It neither
-parses nor fetches the ToS automatically.
+When `/llms.txt` exists, PEW-PEW may fetch up to 64 KiB, but returns at
+most 4 KiB of that text to the model. The returned text is placed
+separately inside a generated contextual boundary as untrusted website
+metadata. It cannot override the user's task or higher-priority
+instructions; statements about AI training or bots do not by themselves
+prohibit an isolated read. When a response already advertises a
+standardized `terms-of-service` link through an HTTP `Link` header or
+HTML `<link>` tag, PEW-PEW surfaces the raw hint for model
+interpretation. It neither parses nor fetches the ToS automatically.
 
 ## Optional programs
 
@@ -136,7 +142,10 @@ PEW-PEW intentionally bounds work and output:
 - fetched body: 2 MiB
 - returned text: 50 KiB / 2,000 lines
 - `robots.txt`: 512 KiB
-- `llms.txt`: 64 KiB
+- `llms.txt` fetch: 64 KiB
+- `llms.txt` returned text: 4 KiB
+- same-origin request gap: 750 ms
+- same-origin gap after a robots-disallowed target: 2.75 seconds
 - fetch operation: 15 seconds
 - Pandoc conversion: 10 seconds
 - Chromium operation: 30 seconds
