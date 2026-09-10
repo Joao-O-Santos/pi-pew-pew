@@ -51,35 +51,58 @@ async function fromCache<T extends { cacheable: boolean }, R>(
   }
 }
 
+type RequestRunner = <T>(url: URL, task: () => Promise<T>, signal: AbortSignal) => Promise<T>;
+type DeferOrigin = (origin: string, milliseconds: number) => void;
+
 async function fetchPolicyFile(
   initial: URL,
   maxBytes: number,
   fetchImpl: FetchImplementation,
   signal: AbortSignal,
+  request?: RequestRunner,
+  defer?: DeferOrigin,
 ): Promise<{ status: number; body: Uint8Array; contentType: string; retryAfter?: string }> {
   let current = initial;
   for (let redirects = 0; ; redirects += 1) {
-    const response = await fetchImpl(current, {
-      redirect: "manual",
-      headers: { "user-agent": USER_AGENT, accept: "text/plain,*/*;q=0.1" },
-      signal,
-    });
-    if (REDIRECT_STATUSES.has(response.status)) {
-      const location = response.headers.get("location");
-      await response.body?.cancel();
-      if (!location || redirects >= LIMITS.redirects)
-        throw new Error("policy file redirect limit exceeded");
-      const next = parseWebUrl(new URL(location, current).href);
-      if (next.origin !== initial.origin) throw new Error("policy file redirect changed origin");
-      current = next;
-      continue;
-    }
-    return {
-      status: response.status,
-      body: await readBounded(response, maxBytes),
-      contentType: response.headers.get("content-type") ?? "",
-      retryAfter: response.headers.get("retry-after") ?? undefined,
+    const load = async () => {
+      const response = await fetchImpl(current, {
+        redirect: "manual",
+        headers: { "user-agent": USER_AGENT, accept: "text/plain,*/*;q=0.1" },
+        signal,
+      });
+      if (REDIRECT_STATUSES.has(response.status)) {
+        const location = response.headers.get("location");
+        await response.body?.cancel();
+        if (!location || redirects >= LIMITS.redirects)
+          throw new Error("policy file redirect limit exceeded");
+        const next = parseWebUrl(new URL(location, current).href);
+        if (next.origin !== initial.origin) throw new Error("policy file redirect changed origin");
+        current = next;
+        return undefined;
+      }
+      const retryAfter = response.headers.get("retry-after") ?? undefined;
+      const body = await readBounded(response, maxBytes);
+      if (response.status === 429 && retryAfter && defer) {
+        const seconds = Number(retryAfter);
+        const timestamp = Date.parse(retryAfter);
+        const delay =
+          Number.isFinite(seconds) && seconds > 0
+            ? Math.ceil(seconds * 1_000)
+            : Number.isNaN(timestamp)
+              ? undefined
+              : timestamp - Date.now();
+        if (delay !== undefined && delay > 0) defer(current.origin, delay);
+      }
+      return {
+        status: response.status,
+        body,
+        contentType: response.headers.get("content-type") ?? "",
+        retryAfter,
+      };
     };
+    const result = request ? await request(current, load, signal) : await load();
+    if (!result) continue;
+    return result;
   }
 }
 
@@ -88,12 +111,23 @@ export class PolicyManager {
   private readonly llmsCache = new Map<string, Promise<LlmsSource>>();
   private readonly disallowedTargetRequests = new Map<string, number>();
 
-  constructor(private readonly fetchImpl: FetchImplementation = globalThis.fetch) {}
+  constructor(
+    private readonly fetchImpl: FetchImplementation = globalThis.fetch,
+    private readonly request?: RequestRunner,
+    private readonly defer?: DeferOrigin,
+  ) {}
 
   private async loadRobots(origin: string, signal: AbortSignal): Promise<RobotsSource> {
     const robotsUrl = new URL("/robots.txt", origin);
     try {
-      const response = await fetchPolicyFile(robotsUrl, LIMITS.robotsBytes, this.fetchImpl, signal);
+      const response = await fetchPolicyFile(
+        robotsUrl,
+        LIMITS.robotsBytes,
+        this.fetchImpl,
+        signal,
+        this.request,
+        this.defer,
+      );
       if (response.status >= 200 && response.status < 300) {
         return {
           result: { state: "allowed", status: response.status },
@@ -161,6 +195,8 @@ export class PolicyManager {
         LIMITS.llmsBytes,
         this.fetchImpl,
         signal,
+        this.request,
+        this.defer,
       );
       if (response.status >= 200 && response.status < 300) {
         return {

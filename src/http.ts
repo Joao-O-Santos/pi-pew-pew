@@ -37,19 +37,63 @@ export function parseWebUrl(input: string, options: { allowFile?: boolean } = {}
   return url;
 }
 
-const termsOfServiceRel = new RegExp(
-  `\\brel\\s*=\\s*(?:"[^"]*\\b${TOS_REL}\\b[^"]*"|'[^']*\\b${TOS_REL}\\b[^']*'|${TOS_REL}\\b)`,
-  "i",
-);
+function hasTermsOfServiceToken(value: string | undefined): boolean {
+  return value?.split(/\s+/).some((token) => token.toLowerCase() === TOS_REL) ?? false;
+}
+
+function splitOutsideQuotes(value: string, separator: string): string[] {
+  const parts: string[] = [];
+  let start = 0;
+  let quote: string | undefined;
+  let angleDepth = 0;
+  for (let index = 0; index < value.length; index += 1) {
+    const character = value[index];
+    if (quote) {
+      if (character === quote) quote = undefined;
+    } else if (character === '"' || character === "'") quote = character;
+    else if (character === "<") angleDepth += 1;
+    else if (character === ">") angleDepth = Math.max(0, angleDepth - 1);
+    else if (character === separator && angleDepth === 0) {
+      parts.push(value.slice(start, index));
+      start = index + 1;
+    }
+  }
+  parts.push(value.slice(start));
+  return parts;
+}
+
+function hasTermsOfServiceLinkRel(value: string): boolean {
+  for (const parameter of splitOutsideQuotes(value, ";").slice(1)) {
+    const match = /^\s*rel\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s,;]+))\s*$/i.exec(parameter);
+    if (hasTermsOfServiceToken(match?.[1] ?? match?.[2] ?? match?.[3])) return true;
+  }
+  return false;
+}
+
+function hasTermsOfServiceHtmlRel(tag: string): boolean {
+  const attribute = /\s([^\s=/>]+)(?:\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'=<>`]+)))?/g;
+  for (const match of tag.matchAll(attribute)) {
+    if (
+      match[1]?.toLowerCase() === "rel" &&
+      hasTermsOfServiceToken(match[2] ?? match[3] ?? match[4])
+    ) {
+      return true;
+    }
+  }
+  return false;
+}
 
 export function termsOfServiceLinkHint(header: string | null): string | undefined {
-  return header && termsOfServiceRel.test(header) ? `Link: ${header}` : undefined;
+  if (!header) return undefined;
+  return splitOutsideQuotes(header, ",").some(hasTermsOfServiceLinkRel)
+    ? `Link: ${header}`
+    : undefined;
 }
 
 export function termsOfServiceHtmlHint(html: string): string | undefined {
   const match = /<link\b[^>]*>/gi;
   for (const tag of html.matchAll(match)) {
-    if (termsOfServiceRel.test(tag[0])) return `HTML: ${tag[0]}`;
+    if (hasTermsOfServiceHtmlRel(tag[0])) return `HTML: ${tag[0]}`;
   }
   return undefined;
 }
@@ -98,6 +142,7 @@ export async function fetchWithRedirects(
     maxRedirects: number;
     readBody?: boolean;
     authorize: (url: URL) => Promise<Authorization>;
+    request?: <T>(url: URL, task: () => Promise<T>, signal: AbortSignal) => Promise<T>;
   },
 ): Promise<HttpResult> {
   const fetchImpl = options.fetch ?? globalThis.fetch;
@@ -107,44 +152,51 @@ export async function fetchWithRedirects(
   for (let redirects = 0; ; redirects += 1) {
     options.signal.throwIfAborted();
     const authorization = await options.authorize(current);
-    const response = await fetchImpl(current, {
-      method: "GET",
-      redirect: "manual",
-      headers: {
-        "user-agent": USER_AGENT,
-        accept:
-          "text/html,application/xhtml+xml,application/json,application/xml,text/plain;q=0.9,*/*;q=0.1",
-      },
-      signal: options.signal,
-    });
-
-    if (REDIRECT_STATUSES.has(response.status)) {
-      const location = response.headers.get("location");
-      await response.body?.cancel();
-      if (!location)
-        throw new Error(`PEW-PEW: redirect ${response.status} did not include Location`);
-      if (redirects >= options.maxRedirects) {
-        throw new Error(`PEW-PEW: exceeded ${options.maxRedirects} redirects`);
+    const hop = async () => {
+      const response = await fetchImpl(current, {
+        method: "GET",
+        redirect: "manual",
+        headers: {
+          "user-agent": USER_AGENT,
+          accept:
+            "text/html,application/xhtml+xml,application/json,application/xml,text/plain;q=0.9,*/*;q=0.1",
+        },
+        signal: options.signal,
+      });
+      if (REDIRECT_STATUSES.has(response.status)) {
+        const location = response.headers.get("location");
+        await response.body?.cancel();
+        if (!location)
+          throw new Error(`PEW-PEW: redirect ${response.status} did not include Location`);
+        if (redirects >= options.maxRedirects) {
+          throw new Error(`PEW-PEW: exceeded ${options.maxRedirects} redirects`);
+        }
+        return { response, location };
       }
-      current = parseWebUrl(new URL(location, current).href);
+      const refusal = REFUSAL_STATUSES.has(response.status) || response.status === 503;
+      if (options.readBody === false || refusal) await response.body?.cancel();
+      const body =
+        options.readBody === false || refusal
+          ? new Uint8Array()
+          : await readBounded(response, options.maxBytes);
+      return { response, body };
+    };
+    const result = options.request
+      ? await options.request(current, hop, options.signal)
+      : await hop();
+    if ("location" in result && typeof result.location === "string") {
+      current = parseWebUrl(new URL(result.location, current).href);
       continue;
     }
-
-    const refusal = REFUSAL_STATUSES.has(response.status) || response.status === 503;
-    if (options.readBody === false || refusal) await response.body?.cancel();
-    const body =
-      options.readBody === false || refusal
-        ? new Uint8Array()
-        : await readBounded(response, options.maxBytes);
     return {
       requestedUrl,
       finalUrl: current.href,
-      status: response.status,
-      contentType: response.headers.get("content-type") ?? "",
-      retryAfter: response.headers.get("retry-after") ?? undefined,
-      body,
+      status: result.response.status,
+      contentType: result.response.headers.get("content-type") ?? "",
+      retryAfter: result.response.headers.get("retry-after") ?? undefined,
+      body: result.body,
       authorization,
-      termsOfService: termsOfServiceLinkHint(response.headers.get("link")),
+      termsOfService: termsOfServiceLinkHint(result.response.headers.get("link")),
     };
   }
 }

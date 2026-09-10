@@ -25,6 +25,7 @@ export interface WebDetails {
   requestedUrl: string;
   finalUrl?: string;
   status?: number;
+  preflightStatus?: number;
   contentType?: string;
   format?: "text" | "html" | "markdown" | "json" | "xml" | "image";
   robots?: RobotsResult;
@@ -45,6 +46,16 @@ export interface WebResult {
     { type: "text"; text: string } | { type: "image"; data: string; mimeType: string }
   >;
   details: WebDetails;
+}
+
+export class WebFailureError extends Error {
+  constructor(
+    message: string,
+    readonly details: Partial<WebDetails> & { reason: string },
+  ) {
+    super(message);
+    this.name = "WebFailureError";
+  }
 }
 
 export class RefusalError extends Error {

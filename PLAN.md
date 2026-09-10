@@ -8,6 +8,17 @@ Core rule:
 
 > Treat `robots.txt` and `llms.txt` as policy signals for automated access, not universal authorization barriers for isolated user-directed retrieval. Enforce politeness primarily through low request rates, bounded scope, and respect for actual server-side refusal or access controls.
 
+## Implementation status and hardening scope
+
+The main refactor is already present. This pass must verify the implementation against every acceptance criterion and close remaining edge cases, especially:
+
+- preserve policy and final-response metadata when a target refuses access;
+- recommend waiting for `Retry-After` only when the header contains a usable delay;
+- recognize standardized ToS relations without accepting similarly named HTML attributes;
+- verify redirect, cancellation, queue-release, and pacing behavior rather than relying only on happy-path tests.
+
+The later disallowed-request guard is the one deliberate exception to reserving `refused` for server-side access refusal: after the two-request isolated-use allowance is exhausted, PEW-PEW refuses further disallowed requests locally as crawler-like repetition.
+
 ## 1. Keep `robots.txt`, change its role
 
 Retain `robots-parser`.
@@ -156,9 +167,9 @@ llms.txt: found | absent | unavailable
 terms-of-service: raw standardized hint | absent
 ```
 
-A robots disallow should be visible but should not change the normal result to `refused`.
+A robots disallow should be visible but should not change either of the first two isolated results to `refused`.
 
-Reserve `refused` for genuine server/access-control refusal.
+Reserve `refused` for genuine server/access-control refusal and the explicit local repetition guard described in section 1.
 
 ## 9. Tests
 

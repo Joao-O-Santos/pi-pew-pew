@@ -15,7 +15,13 @@ import {
 import { PolicyManager } from "./policy.js";
 import { controlledSignal, executableWorks } from "./process.js";
 import { OriginQueue } from "./queue.js";
-import { RefusalError, type WebDetails, type WebMode, type WebResult } from "./types.js";
+import {
+  RefusalError,
+  type WebDetails,
+  WebFailureError,
+  type WebMode,
+  type WebResult,
+} from "./types.js";
 
 export function wrapLlms(text: string): string {
   const id = Math.random().toString(36).slice(2, 8);
@@ -48,6 +54,9 @@ function metadata(details: WebDetails): string {
     `llms.txt: ${details.llms?.state ?? "unknown"}`,
     `terms-of-service: ${details.termsOfService ?? "absent"}`,
   ];
+  if (details.preflightStatus !== undefined) {
+    lines.push(`HTTP preflight status: ${details.preflightStatus}`);
+  }
   if (details.pandoc) lines.push(`Pandoc: ${details.pandoc}`);
   if (details.retryAfter) lines.push(`Retry-After: ${details.retryAfter}`);
   if (details.reason) lines.push(`reason: ${details.reason}`);
@@ -66,7 +75,8 @@ function retryAfterMs(retryAfter: string | undefined): number | undefined {
   const seconds = Number(retryAfter);
   if (Number.isFinite(seconds) && seconds >= 0) return Math.ceil(seconds * 1_000);
   const timestamp = Date.parse(retryAfter);
-  return Number.isNaN(timestamp) ? undefined : Math.max(0, timestamp - Date.now());
+  const delay = timestamp - Date.now();
+  return Number.isNaN(timestamp) || delay <= 0 ? undefined : delay;
 }
 
 export class WebService {
@@ -78,7 +88,11 @@ export class WebService {
     private readonly fetchImpl: FetchImplementation = globalThis.fetch,
     private readonly chromium = new Chromium(),
   ) {
-    this.policy = new PolicyManager(fetchImpl);
+    this.policy = new PolicyManager(
+      fetchImpl,
+      (url, task, signal) => this.queue.run(url.origin, task, signal),
+      (origin, milliseconds) => this.queue.defer(origin, milliseconds),
+    );
   }
 
   private async findPandoc(signal: AbortSignal): Promise<string | undefined> {
@@ -112,19 +126,26 @@ export class WebService {
       if (initial.protocol === "file:") {
         return await this.retrieveLocalScreenshot(initial, operation.signal);
       }
-      return await this.queue.run(
-        initial.origin,
-        () => this.retrieve(initial.href, mode, operation.signal),
-        operation.signal,
-      );
+      return await this.retrieve(initial.href, mode, operation.signal);
     } catch (error) {
-      if (!(error instanceof RefusalError)) throw error;
+      if (!(error instanceof RefusalError || error instanceof WebFailureError)) throw error;
       const details: WebDetails = {
-        outcome: "refused",
+        outcome: error instanceof RefusalError ? "refused" : "failed",
         mode,
         requestedUrl: initial.href,
         ...error.details,
       };
+      if (error instanceof WebFailureError) {
+        return {
+          content: [
+            {
+              type: "text",
+              text: `${metadata(details)}\n\nPEW-PEW: retrieval failed without an automatic retry.`,
+            },
+          ],
+          details,
+        };
+      }
       const recovery =
         details.retryPolicy === "after-retry-after"
           ? "Wait for Retry-After."
@@ -192,19 +213,25 @@ export class WebService {
 
   private async retrieve(url: string, mode: WebMode, signal: AbortSignal): Promise<WebResult> {
     const origin = parseWebUrl(url).origin;
+    let requestOrigin = origin;
     let result: HttpResult;
     try {
       result = await fetchWithRedirects(url, {
+        request: (target, task, requestSignal) =>
+          this.queue.run(target.origin, task, requestSignal),
         fetch: this.fetchImpl,
         signal,
         maxBytes: LIMITS.httpBytes,
         maxRedirects: LIMITS.redirects,
         readBody: mode === "fetch",
-        authorize: (target) => this.policy.authorize(target, signal),
+        authorize: (target) => {
+          requestOrigin = target.origin;
+          return this.policy.authorize(target, signal);
+        },
       });
     } catch (error) {
       if (error instanceof RefusalError && error.details.robots?.state === "disallowed") {
-        this.queue.pace(origin, DISALLOWED_PACING_MS);
+        this.queue.pace(requestOrigin, DISALLOWED_PACING_MS);
       }
       throw error;
     }
@@ -217,36 +244,63 @@ export class WebService {
       authorization,
       termsOfService,
     } = result;
+    const { text: llmsText, ...llms } = authorization.llms;
     if (REFUSAL_STATUSES.has(status)) {
-      const delay = retryAfterMs(retryAfter);
-      if (delay !== undefined) this.queue.defer(origin, delay);
+      const responseOrigin = new URL(finalUrl).origin;
+      const delay = status === 429 ? retryAfterMs(retryAfter) : undefined;
+      if (delay !== undefined) this.queue.defer(responseOrigin, delay);
       throw new RefusalError(`PEW-PEW: site refused automated access with HTTP ${status}`, {
         reason: `HTTP ${status} refusal`,
+        finalUrl,
         status,
+        contentType,
+        robots: authorization.robots,
+        llms,
+        termsOfService,
         retryAfter,
         refusalScope: "request",
-        retryPolicy: status === 429 ? "after-retry-after" : "after-confirmed-state-change",
+        retryPolicy:
+          status === 429 && delay !== undefined
+            ? "after-retry-after"
+            : "after-confirmed-state-change",
       });
     }
-    if (status === 503)
-      throw new Error(
+    if (status === 503) {
+      throw new WebFailureError(
         "PEW-PEW: site returned transient HTTP 503; no automatic retry was attempted",
+        {
+          reason: "HTTP 503 temporary failure; no automatic retry was attempted",
+          finalUrl,
+          status,
+          contentType,
+          robots: authorization.robots,
+          llms,
+          termsOfService,
+          retryAfter,
+        },
       );
+    }
 
-    const { text: llmsText, ...llms } = authorization.llms;
+    const browserMode = mode !== "fetch";
     const details: WebDetails = {
       outcome: "ok",
       mode,
       source: "http",
       requestedUrl,
       finalUrl,
-      status,
+      status: browserMode ? undefined : status,
+      preflightStatus: browserMode ? status : undefined,
       contentType,
+      reason: browserMode
+        ? "HTTP preflight succeeded; Chromium navigation status is unavailable"
+        : undefined,
       robots: authorization.robots,
       llms,
       termsOfService,
     };
-    if (authorization.robots.state === "disallowed") this.queue.pace(origin, DISALLOWED_PACING_MS);
+    if (authorization.robots.state === "disallowed") {
+      this.queue.pace(new URL(finalUrl).origin, DISALLOWED_PACING_MS);
+    }
     let body: string | undefined;
     let image: WebResult["content"][number] | undefined;
     if (mode === "screenshot") {
