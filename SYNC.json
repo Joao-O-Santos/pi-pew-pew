@@ -1,0 +1,131 @@
+{
+  "version": 2,
+  "confirmedAt": "2026-09-10T11:25:08.717Z",
+  "artifacts": [
+    {
+      "path": "README.md",
+      "fingerprint": "sha256:4d09172eea2c3afdc30ee8a57445403a89191af00c12673e2771b9bd109e28b5",
+      "status": "current",
+      "role": "documentation",
+      "dependsOn": ["package.json", "src/service.ts"]
+    },
+    {
+      "path": "package.json",
+      "fingerprint": "sha256:ab023c5e1e366a072e0f4e500a62f1d98363f6438620f73639d4085b29f68a36",
+      "status": "current",
+      "role": "package-boundary"
+    },
+    {
+      "path": "src/chromium.ts",
+      "fingerprint": "sha256:0e8443208aa9541339d2b4b8b936f79727f528df2a5d9350fd5011705a020044",
+      "status": "current",
+      "role": "implementation",
+      "dependsOn": ["src/constants.ts", "src/process.ts"]
+    },
+    {
+      "path": "src/constants.ts",
+      "fingerprint": "sha256:0932001b096797afa54106c0fcf66f5e0845235238551061622fe5a85e7cfed9",
+      "status": "current",
+      "role": "implementation"
+    },
+    {
+      "path": "src/convert.ts",
+      "fingerprint": "sha256:03d01fc4308b5f9be3c9a605a5aa154d4132c2ce9d7013b878c2d4d1d458429e",
+      "status": "current",
+      "role": "implementation",
+      "dependsOn": ["src/constants.ts", "src/process.ts", "src/types.ts"]
+    },
+    {
+      "path": "src/http.ts",
+      "fingerprint": "sha256:89b619486986a6d9a94b753c08e948c98881f21cad1ddc57f1a6dd61fbbc6b33",
+      "status": "current",
+      "role": "implementation",
+      "dependsOn": ["src/constants.ts", "src/types.ts"]
+    },
+    {
+      "path": "src/index.ts",
+      "fingerprint": "sha256:eacf2ea567a1bea5ae642d45035abbfd594a4aab2535f86ad5a2c80aa6db95f7",
+      "status": "current",
+      "role": "extension-entrypoint",
+      "dependsOn": ["src/http.ts", "src/service.ts", "src/status.ts", "src/types.ts"]
+    },
+    {
+      "path": "src/policy.ts",
+      "fingerprint": "sha256:89e53d3e40aa4316fb570091ea61fd5b55beea0ed4d3e6d9d2d6c0cb43d9dca5",
+      "status": "current",
+      "role": "implementation",
+      "dependsOn": ["src/constants.ts", "src/http.ts", "src/types.ts"]
+    },
+    {
+      "path": "src/process.ts",
+      "fingerprint": "sha256:1784a3628ead7fc80037c771958faab05272a5f36377a2a1129071fa2cfa538a",
+      "status": "current",
+      "role": "implementation"
+    },
+    {
+      "path": "src/queue.ts",
+      "fingerprint": "sha256:898941cc82594fdf3b5aebacbbbddc038f214be85f79c646c40a2f6cfe4087d7",
+      "status": "current",
+      "role": "implementation",
+      "dependsOn": ["src/constants.ts"]
+    },
+    {
+      "path": "src/service.ts",
+      "fingerprint": "sha256:da43e33bac5e6a08661d29403099b56ca11dfca749a37f3457b1eb79305dae70",
+      "status": "current",
+      "role": "implementation",
+      "dependsOn": [
+        "src/chromium.ts",
+        "src/constants.ts",
+        "src/convert.ts",
+        "src/http.ts",
+        "src/policy.ts",
+        "src/process.ts",
+        "src/queue.ts",
+        "src/types.ts"
+      ]
+    },
+    {
+      "path": "src/status.ts",
+      "fingerprint": "sha256:c04908dd61fd7691a7e12564d4caf3c5a3f6299275aecc530d5723c4377240a6",
+      "status": "current",
+      "role": "implementation"
+    },
+    {
+      "path": "src/types.ts",
+      "fingerprint": "sha256:c98d4eb845bbfb2329ec5bcbc6d6bc6b49aab5a14662d7605af392cb169cf01c",
+      "status": "current",
+      "role": "implementation"
+    },
+    {
+      "path": "test/policy.test.ts",
+      "fingerprint": "sha256:5005bc1c2fb5d9023e2ecd62898d3f5e0022e8567cfd115b49802c1517c97c06",
+      "status": "current",
+      "role": "tests",
+      "dependsOn": ["src/policy.ts"]
+    },
+    {
+      "path": "test/status.test.ts",
+      "fingerprint": "sha256:e7ac2f6fa6b4e8ab829df8dc1e5993df05333502cf372a0ba4a6fa8f3cdaf9b4",
+      "status": "current",
+      "role": "tests",
+      "dependsOn": ["src/status.ts"]
+    },
+    {
+      "path": "test/web.test.ts",
+      "fingerprint": "sha256:33e9e34544d8ca85587563d8bf386b8885d4adf6d3541031925bf8519812a75f",
+      "status": "current",
+      "role": "tests",
+      "dependsOn": [
+        "src/chromium.ts",
+        "src/constants.ts",
+        "src/convert.ts",
+        "src/http.ts",
+        "src/policy.ts",
+        "src/process.ts",
+        "src/queue.ts",
+        "src/service.ts"
+      ]
+    }
+  ]
+}
