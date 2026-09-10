@@ -1,7 +1,14 @@
 {
   "version": 2,
-  "confirmedAt": "2026-09-10T11:25:08.717Z",
+  "confirmedAt": "2026-09-10T11:35:11.626Z",
   "artifacts": [
+    {
+      "path": "PROJECT.md",
+      "fingerprint": "sha256:636c09baf560bbfe7177ff282851ffdbf2475d6ba79a299c00cddc20fcad4ff8",
+      "status": "current",
+      "role": "project-state",
+      "dependsOn": ["README.md", "package.json"]
+    },
     {
       "path": "README.md",
       "fingerprint": "sha256:4d09172eea2c3afdc30ee8a57445403a89191af00c12673e2771b9bd109e28b5",
@@ -10,10 +17,48 @@
       "dependsOn": ["package.json", "src/service.ts"]
     },
     {
+      "path": "LICENSE",
+      "fingerprint": "sha256:1e2bacba303ea4ad27fbf8f5288a0e91c0a0bf342be8d64a317a3bb1c88063fb",
+      "status": "current",
+      "role": "license"
+    },
+    {
+      "path": ".gitlab-ci.yml",
+      "fingerprint": "sha256:3fb6b9520409986f763c37804a09fcfd19ae58e8d13144eac20e480abbb0e5cb",
+      "status": "current",
+      "role": "ci-configuration",
+      "dependsOn": ["package.json", "package-lock.json"]
+    },
+    {
+      "path": "biome.json",
+      "fingerprint": "sha256:cc841ff4855b6196a66e5b99ab5e43ad6a050d1eb35518758353f46d3c6ddec4",
+      "status": "current",
+      "role": "tooling-configuration"
+    },
+    {
       "path": "package.json",
-      "fingerprint": "sha256:ab023c5e1e366a072e0f4e500a62f1d98363f6438620f73639d4085b29f68a36",
+      "fingerprint": "sha256:57d122a86d0ff50248e5cbd95516ab06e970bf437d47d239154f85f0997eb3d2",
       "status": "current",
       "role": "package-boundary"
+    },
+    {
+      "path": "package-lock.json",
+      "fingerprint": "sha256:0c1403fe3500a8308bd2d0ff385728cedd34ca39ffa2a534a794f76f3766e3fa",
+      "status": "current",
+      "role": "package-lock",
+      "dependsOn": ["package.json"]
+    },
+    {
+      "path": "scripts/format-markdown.mjs",
+      "fingerprint": "sha256:6ae46dae9697e117f6f2ff01e144c3ab251e64939ef34c566458866c243e9fa5",
+      "status": "current",
+      "role": "tooling"
+    },
+    {
+      "path": "tsconfig.json",
+      "fingerprint": "sha256:e6528d5305b098424b69be26b8319717c84cc3dcc1d67dfe4063079deed70ccb",
+      "status": "current",
+      "role": "tooling-configuration"
     },
     {
       "path": "src/chromium.ts",
@@ -127,5 +172,8 @@
         "src/service.ts"
       ]
     }
-  ]
+  ],
+  "canonical": {
+    "project": "PROJECT.md"
+  }
 }
