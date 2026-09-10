@@ -62,11 +62,19 @@ repetition. Allowed targets are not charged to that small budget.
 Successful policies and explicit absence are cached in memory.
 
 Actual resource-level refusals (`401`, `403`, `407`, `429`, and `451`)
-stop the operation without automatic retries or mode escalation. A
-refusal identifies whether it applies to one request or the origin, and
-states whether to wait for `Retry-After`, wait for a confirmed access or
-configuration change plus an explicit user request, or stop for the
-session. `503` is surfaced as a temporary failure without retry.
+observed by PEW-PEW's HTTP request stop the operation without automatic
+retries or mode escalation. A refusal identifies whether it applies to
+one request or the origin, and states whether to wait for `Retry-After`,
+wait for a confirmed access or configuration change plus an explicit
+user request, or stop for the session. `503` is surfaced as a temporary
+failure without retry.
+
+`render` and `screenshot` first use a bounded HTTP preflight to resolve
+redirects and detect HTTP refusal before starting Chromium. Chromium
+then performs its own native-user-agent navigation; its CLI does not
+expose a reliable final HTTP status, so browser-mode results report the
+successful preflight status separately and leave the navigation status
+unknown rather than claiming that the preflight describes it.
 
 PEW-PEW does not spoof user agents, solve CAPTCHAs, bypass anti-bot
 systems, reuse clearance cookies, rotate proxies, bypass authentication
