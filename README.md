@@ -63,8 +63,8 @@ Successful policies and explicit absence are cached in memory.
 
 HTTP(S) work is serialized per origin. Ordinary requests leave at least
 750 ms before the next request to the same origin; after a
-robots-disallowed target, that gap increases to at least 2.75 seconds.
-A valid `Retry-After` can defer that origin for longer.
+robots-disallowed target, that gap increases to at least 2.75 seconds. A
+valid `Retry-After` can defer that origin for longer.
 
 Actual resource-level refusals (`401`, `403`, `407`, `429`, and `451`)
 observed by PEW-PEW's HTTP request stop the operation without automatic
@@ -138,20 +138,20 @@ bounded HTML instead of losing the page.
 
 PEW-PEW intentionally bounds work and output:
 
-- redirects: 5
-- fetched body: 2 MiB
-- returned text: 50 KiB / 2,000 lines
-- `robots.txt`: 512 KiB
-- `llms.txt` fetch: 64 KiB
-- `llms.txt` returned text: 4 KiB
-- same-origin request gap: 750 ms
-- same-origin gap after a robots-disallowed target: 2.75 seconds
-- fetch operation: 15 seconds
-- Pandoc conversion: 10 seconds
-- Chromium operation: 30 seconds
-- Chromium DOM: 2 MiB
-- local screenshot input: 256 MiB
-- screenshot: 10 MiB
+-   redirects: 5
+-   fetched body: 2 MiB
+-   returned text: 50 KiB / 2,000 lines
+-   `robots.txt`: 512 KiB
+-   `llms.txt` fetch: 64 KiB
+-   `llms.txt` returned text: 4 KiB
+-   same-origin request gap: 750 ms
+-   same-origin gap after a robots-disallowed target: 2.75 seconds
+-   fetch operation: 15 seconds
+-   Pandoc conversion: 10 seconds
+-   Chromium operation: 30 seconds
+-   Chromium DOM: 2 MiB
+-   local screenshot input: 256 MiB
+-   screenshot: 10 MiB
 
 Cancellation propagates to body reads, Pandoc, and Chromium. Temporary
 screenshots are removed even when cancelled or failed.
