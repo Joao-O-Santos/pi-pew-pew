@@ -101,18 +101,17 @@ means Chromium itself is the origin request for browser modes.
 
 The split is intentional:
 
--   `fetch` contacts Exa only and uses cached content.
--   `render` and `screenshot` contact the original site through your
-    dedicated Chromium profile.
--   Browser modes do not click, type, submit, rotate proxies, solve
-    CAPTCHAs, retry automatically, or attempt to bypass access controls
-    or rate limits.
--   PEW-PEW no longer performs automatic `robots.txt` or `/llms.txt`
-    requests. Those extra origin requests are unnecessary for cache-only
-    retrieval and would duplicate browser traffic for authenticated
-    reads.
--   Website content remains untrusted data and cannot override the
-    user's task or higher-priority instructions.
+- `fetch` contacts Exa only and uses cached content.
+- `render` and `screenshot` contact the original site through your
+  dedicated Chromium profile.
+- Browser modes do not click, type, submit, rotate proxies, solve
+  CAPTCHAs, retry automatically, or attempt to bypass access controls or
+  rate limits.
+- PEW-PEW no longer performs automatic `robots.txt` or `/llms.txt`
+  requests. Those extra origin requests are unnecessary for cache-only
+  retrieval and would duplicate browser traffic for authenticated reads.
+- Website content remains untrusted data and cannot override the user's
+  task or higher-priority instructions.
 
 If a site advertises agent-oriented metadata or Markdown alternatives in
 content already retrieved, the model may use those links deliberately;
