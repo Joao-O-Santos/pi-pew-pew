@@ -37,7 +37,10 @@ function fakeChromium() {
 test("URL validation preserves local PDF fragments only for screenshots", () => {
   assert.equal(parseWebUrl("https://example.test/a#fragment").hash, "");
   assert.throws(() => parseWebUrl("file:///etc/passwd"), /HTTP or HTTPS/);
-  assert.equal(parseWebUrl("file:///tmp/document.pdf#page=2", { allowFile: true }).hash, "#page=2");
+  assert.equal(
+    parseWebUrl("file:///tmp/document.pdf#page=2", { allowFile: true }).hash,
+    "#page=2",
+  );
 });
 
 test("Exa fetch is cache-only, bounded, authenticated, and never targets the requested origin", async () => {
@@ -45,7 +48,9 @@ test("Exa fetch is cache-only, bounded, authenticated, and never targets the req
   const fetch = async (input: string | URL | Request, init?: RequestInit): Promise<Response> => {
     calls.push({ url: String(input), init });
     return new Response(
-      JSON.stringify({ results: [{ url: "https://example.test/article", title: "Article", text: "body" }] }),
+      JSON.stringify({
+        results: [{ url: "https://example.test/article", title: "Article", text: "body" }],
+      }),
       { status: 200, headers: { "content-type": "application/json" } },
     );
   };
@@ -141,7 +146,10 @@ test("render goes straight to Chromium and converts its DOM", async () => {
     },
     screenshot: async (): Promise<ChromiumResult> => ({ screenshot: Buffer.from("png") }),
   };
-  const result = await new WebService(cache, chromium).execute("https://example.test/app", "render");
+  const result = await new WebService(cache, chromium).execute(
+    "https://example.test/app",
+    "render",
+  );
   assert.equal(cacheCalls, 0);
   assert.deepEqual(calls, ["https://example.test/app"]);
   assert.equal(result.details.source, "chromium");
