@@ -47,9 +47,6 @@
       "./src/index.ts"
     ]
   },
-  "dependencies": {
-    "robots-parser": "^3.0.1"
-  },
   "peerDependencies": {
     "@earendil-works/pi-ai": "*",
     "@earendil-works/pi-coding-agent": "*",
