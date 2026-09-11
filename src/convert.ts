@@ -26,7 +26,9 @@ export function limitText(
   const truncated = lines.length > maxLines || Buffer.byteLength(output) > maxBytes;
   if (!truncated) return { text: output, truncated: false };
 
-  const notice = "\n\n[PEW-PEW: output truncated]";
+  const notice = maxLines > 1 ? "\n\n[PEW-PEW: output truncated]" : "[PEW-PEW: output truncated]";
+  const reservedLines = notice.split("\n").length - 1;
+  output = lines.slice(0, Math.max(0, maxLines - reservedLines)).join("\n");
   const budget = Math.max(0, maxBytes - Buffer.byteLength(notice));
   output = truncateUtf8(output, budget);
   return { text: truncateUtf8(`${output}${notice}`, maxBytes), truncated: true };

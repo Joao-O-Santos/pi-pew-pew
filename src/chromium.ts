@@ -1,6 +1,6 @@
-import { mkdtemp, readFile, rm, stat } from "node:fs/promises";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { mkdir, mkdtemp, readFile, rm, stat } from "node:fs/promises";
+import { homedir, tmpdir } from "node:os";
+import { join, resolve } from "node:path";
 import { LIMITS } from "./constants.js";
 import { executableWorks, runProcess } from "./process.js";
 
@@ -11,12 +11,28 @@ export interface ChromiumResult {
 
 export const SCREENSHOT_VIEWPORT = { width: 1280, height: 900, fullPage: false } as const;
 
-export function chromiumArguments(args: string[], url: string): string[] {
-  return ["--headless=new", "--disable-gpu", ...args, url];
+export function chromiumProfilePath(
+  env: NodeJS.ProcessEnv = process.env,
+  home = homedir(),
+): string {
+  const explicit = env.PEW_PEW_CHROMIUM_PROFILE?.trim();
+  if (explicit) return resolve(explicit);
+  const config = env.XDG_CONFIG_HOME?.trim() ? resolve(env.XDG_CONFIG_HOME) : join(home, ".config");
+  return join(config, "pi", "pi-pew-pew", "chromium");
+}
+
+export function chromiumArguments(
+  args: string[],
+  url: string,
+  profile = chromiumProfilePath(),
+): string[] {
+  return ["--headless=new", "--disable-gpu", `--user-data-dir=${profile}`, ...args, url];
 }
 
 export class Chromium {
   private discovered?: Promise<string | undefined>;
+
+  constructor(private readonly profile = chromiumProfilePath()) {}
 
   async executable(signal?: AbortSignal): Promise<string> {
     this.discovered ??= this.findExecutable(signal);
@@ -56,7 +72,8 @@ export class Chromium {
     maxStdoutBytes: number,
   ) {
     const executable = await this.executable(signal);
-    const result = await runProcess(executable, chromiumArguments(args, url), {
+    await mkdir(this.profile, { recursive: true, mode: 0o700 });
+    const result = await runProcess(executable, chromiumArguments(args, url, this.profile), {
       signal,
       timeoutMs: LIMITS.chromiumTimeoutMs,
       maxStdoutBytes,
