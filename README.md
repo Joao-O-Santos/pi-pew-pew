@@ -2,6 +2,14 @@
 
 ![pi-pew-pew logo](logo.png)
 
+[![pipeline
+status](https://gitlab.com/Joao-O-Santos/pi-pew-pew/badges/main/pipeline.svg)](https://gitlab.com/Joao-O-Santos/pi-pew-pew/-/commits/main)
+[![npm
+version](https://img.shields.io/npm/v/pi-pew-pew.svg)](https://www.npmjs.com/package/pi-pew-pew)
+[![npm
+downloads](https://img.shields.io/npm/dt/pi-pew-pew.svg)](https://www.npmjs.com/package/pi-pew-pew)
+[![license](https://img.shields.io/npm/l/pi-pew-pew.svg)](https://gitlab.com/Joao-O-Santos/pi-pew-pew/-/blob/main/LICENSE)
+
 **Small-batch read-only web access for Pi.**
 
 `pi-pew-pew` gives Pi one deliberately small `web` tool. Cached reading
