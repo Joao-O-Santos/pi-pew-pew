@@ -17,9 +17,7 @@ export function chromiumProfilePath(
 ): string {
   const explicit = env.PEW_PEW_CHROMIUM_PROFILE?.trim();
   if (explicit) return resolve(explicit);
-  const config = env.XDG_CONFIG_HOME?.trim()
-    ? resolve(env.XDG_CONFIG_HOME)
-    : join(home, ".config");
+  const config = env.XDG_CONFIG_HOME?.trim() ? resolve(env.XDG_CONFIG_HOME) : join(home, ".config");
   return join(config, "pi", "pi-pew-pew", "chromium");
 }
 
