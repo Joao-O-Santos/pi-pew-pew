@@ -37,10 +37,7 @@ function fakeChromium() {
 test("URL validation preserves local PDF fragments only for screenshots", () => {
   assert.equal(parseWebUrl("https://example.test/a#fragment").hash, "");
   assert.throws(() => parseWebUrl("file:///etc/passwd"), /HTTP or HTTPS/);
-  assert.equal(
-    parseWebUrl("file:///tmp/document.pdf#page=2", { allowFile: true }).hash,
-    "#page=2",
-  );
+  assert.equal(parseWebUrl("file:///tmp/document.pdf#page=2", { allowFile: true }).hash, "#page=2");
 });
 
 test("Exa fetch is cache-only, bounded, authenticated, and never targets the requested origin", async () => {
