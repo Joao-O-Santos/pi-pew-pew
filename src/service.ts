@@ -119,7 +119,9 @@ export class WebService {
 
   private async render(url: string, signal: AbortSignal): Promise<WebResult> {
     const raw = (await this.chromium.render(url, signal)).dom ?? "";
-    const conversion = await htmlToMarkdown(raw, url, signal, () => this.pandocExecutable(signal));
+    const { text, ...conversion } = await htmlToMarkdown(raw, url, signal, () =>
+      this.pandocExecutable(signal),
+    );
     const details: WebDetails = {
       outcome: "ok",
       mode: "render",
@@ -132,7 +134,7 @@ export class WebService {
       content: [
         {
           type: "text",
-          text: `${metadata(details)}\n\n===== BEGIN rendered page =====\n${conversion.text}\n===== END rendered page =====`,
+          text: `${metadata(details)}\n\n===== BEGIN rendered page =====\n${text}\n===== END rendered page =====`,
         },
       ],
       details,
