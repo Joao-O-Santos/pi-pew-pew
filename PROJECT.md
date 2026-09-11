@@ -2,21 +2,38 @@
 
 ## Objective
 
-Maintain one small, read-only Pi web tool that prefers cached retrieval and only contacts original websites when browser rendering or visual/authenticated inspection is actually required.
+Maintain one small, read-only Pi web tool for known URLs: Exa cache-only
+retrieval first, followed only when needed by a persistent authenticated
+Chromium profile.
 
 ## Current direction
 
-Refactor `fetch` to Exa's Contents API in explicit cache-only mode (`maxAgeHours: -1`). `render` and `screenshot` use one dedicated persistent Chromium profile so ephemeral Pi workers can reuse legitimate institutional SSO state. Remove PEW-PEW's crawler-like origin preflight, robots, llms, and pacing machinery rather than adapting it to the new architecture.
+`fetch` sends one cache-only Exa Contents request (`maxAgeHours: -1`) and
+never requests the target origin. `render` and `screenshot` directly navigate
+with the same dedicated persistent Chromium profile. Search/discovery and
+interactive browsing are outside PEW-PEW.
 
 ## Invariants
 
 - One model-facing `web({url, mode})` tool.
-- `fetch` never intentionally contacts the requested origin and never silently falls back to live crawling.
-- `render` and `screenshot` are read-only browser navigation through a dedicated local Chromium profile.
-- No click, type, submit, arbitrary JavaScript, proxy rotation, CAPTCHA solving, crawling, or automatic retry.
-- No credentials are handled by PEW-PEW; humans establish browser sessions directly in Chromium.
-- Normal tests are hermetic. Real-provider tests are explicit opt-in and excluded from CI.
+- No origin preflight, `robots.txt`/`llms.txt` probing, crawling, interaction,
+  credential handling, or automatic retries.
+- Browser modes remain read-only; humans establish SSO directly in Chromium.
+- Normal tests are hermetic; the real Exa smoke test is opt-in.
 
 ## Definition of done
 
-The obsolete policy/queue/preflight implementation is deleted; cache-only Exa behavior and persistent-profile Chromium behavior are covered by focused tests; `npm run check` and package dry-run pass; project state and documentation match the implementation. Merge, versioning, tagging, and publication remain explicit human actions.
+Keep Exa and Chromium behavior bounded and separately tested; run `npm ci`,
+`npm run check`, and `npm pack --dry-run` before changes. Keep project state
+synchronized with canonical files.
+
+## Previous action
+
+Reviewed the Exa-cache/persistent-profile refactor, corrected Exa protocol and
+response-boundary handling, removed the stale `robots-parser` lock entry, and
+added focused hermetic tests.
+
+## Immediate next step
+
+Maintain the small three-mode architecture; use `pi-chrome-use` for interactive
+browser work and a remote research worker for search.

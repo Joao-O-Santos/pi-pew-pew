@@ -1,17 +1,17 @@
 {
   "version": 2,
-  "confirmedAt": "2026-09-11T10:54:33Z",
+  "confirmedAt": "2026-09-11T22:37:21Z",
   "artifacts": [
     {
       "path": "PROJECT.md",
-      "fingerprint": "sha256:33180a3c57073838a8836544e713d12eb6ecba1d20c215054a95ddc948d17548",
+      "fingerprint": "sha256:541b709c86197909842ff75aba79bcb9292153f837899e2425784d857366545f",
       "status": "current",
       "role": "project-state",
       "dependsOn": ["README.md", "package.json"]
     },
     {
       "path": "README.md",
-      "fingerprint": "sha256:5a2afc22252adce74dd62d532c0148d1e8fc6819484803b89a0df74bcd36c31f",
+      "fingerprint": "sha256:947cadcdf47009554a685642b16eef28b58aa3c1818d257338fea8348d7ff750",
       "status": "current",
       "role": "documentation",
       "dependsOn": ["package.json", "src/service.ts"]
@@ -37,13 +37,13 @@
     },
     {
       "path": "package.json",
-      "fingerprint": "sha256:95dd3a49f51eb932a640ac173d4bb0eeadfe6102b65dcad24e982d2f067982c9",
+      "fingerprint": "sha256:01889a44030799fa33f4c143e112466f2505fd78686572fd8bb40e49e35f7b09",
       "status": "current",
       "role": "package-boundary"
     },
     {
       "path": "package-lock.json",
-      "fingerprint": "sha256:92d2b94735201d6830b017864da18f027e3d1556364c704ba24182ba65e1b99c",
+      "fingerprint": "sha256:6fb7feff4dd3bba6f86b872a37c5a3e52879b9d4a9013cacef06e06ff52e8e14",
       "status": "current",
       "role": "package-lock",
       "dependsOn": ["package.json"]
@@ -62,113 +62,97 @@
     },
     {
       "path": "src/chromium.ts",
-      "fingerprint": "sha256:0e8443208aa9541339d2b4b8b936f79727f528df2a5d9350fd5011705a020044",
+      "fingerprint": "sha256:ba1262efc6064149d15ba6c4f97c6bb61846d89d5040a5fde34660492857ed05",
       "status": "current",
       "role": "implementation",
       "dependsOn": ["src/constants.ts", "src/process.ts"]
     },
     {
       "path": "src/constants.ts",
-      "fingerprint": "sha256:6a101f37eb50f7e59213e29ae1fc9ff696e418383a70b56bf1bf861fef90b2db",
+      "fingerprint": "sha256:37ade6b66503e9c6c7d4f2af8bd2dee3ad1555ef1d79d7f6e0a2846cbdd059ab",
       "status": "current",
       "role": "implementation"
     },
     {
       "path": "src/convert.ts",
-      "fingerprint": "sha256:03d01fc4308b5f9be3c9a605a5aa154d4132c2ce9d7013b878c2d4d1d458429e",
+      "fingerprint": "sha256:716ccc67867751b38440f23961173110400bd670d99a99b8e9539e57150540ae",
       "status": "current",
       "role": "implementation",
       "dependsOn": ["src/constants.ts", "src/process.ts", "src/types.ts"]
     },
     {
-      "path": "src/http.ts",
-      "fingerprint": "sha256:05ecf20c6ac549e2f6d2f6e98b2dd4a14df205fe357cde4e60440fa9970382af",
-      "status": "current",
-      "role": "implementation",
-      "dependsOn": ["src/constants.ts", "src/types.ts"]
-    },
-    {
-      "path": "src/index.ts",
-      "fingerprint": "sha256:eacf2ea567a1bea5ae642d45035abbfd594a4aab2535f86ad5a2c80aa6db95f7",
-      "status": "current",
-      "role": "extension-entrypoint",
-      "dependsOn": ["src/http.ts", "src/service.ts", "src/status.ts", "src/types.ts"]
-    },
-    {
-      "path": "src/policy.ts",
-      "fingerprint": "sha256:bdc864ea675631736668e10cdf7f8c8a40311f1e29634cbdb6c7a42dc0a9f786",
+      "path": "src/exa.ts",
+      "fingerprint": "sha256:04702a0f2d9d6d1a406b244c01403fcadc9d527bfe00170a6fee867ff1ee5cad",
       "status": "current",
       "role": "implementation",
       "dependsOn": ["src/constants.ts", "src/http.ts", "src/types.ts"]
     },
     {
-      "path": "src/process.ts",
-      "fingerprint": "sha256:1784a3628ead7fc80037c771958faab05272a5f36377a2a1129071fa2cfa538a",
+      "path": "src/http.ts",
+      "fingerprint": "sha256:28195ecc7825ab4d1ce95f78030721dcec4985c4f656812bdcb060041f4a43cd",
       "status": "current",
       "role": "implementation"
     },
     {
-      "path": "src/queue.ts",
-      "fingerprint": "sha256:898941cc82594fdf3b5aebacbbbddc038f214be85f79c646c40a2f6cfe4087d7",
+      "path": "src/index.ts",
+      "fingerprint": "sha256:72025dc59ce5bbf72521efd46d9ebe72b1238efbe8cafa7ff907d6e67f58a174",
       "status": "current",
-      "role": "implementation",
-      "dependsOn": ["src/constants.ts"]
+      "role": "extension-entrypoint",
+      "dependsOn": ["src/http.ts", "src/service.ts", "src/types.ts"]
+    },
+    {
+      "path": "src/process.ts",
+      "fingerprint": "sha256:6a6b4495ff891e15e1fd29cd3b68cd78d3d7dcccd0ad3fba98bc8858ecf6e403",
+      "status": "current",
+      "role": "implementation"
     },
     {
       "path": "src/service.ts",
-      "fingerprint": "sha256:da43e33bac5e6a08661d29403099b56ca11dfca749a37f3457b1eb79305dae70",
+      "fingerprint": "sha256:44df40a6feed3a55032c2b7ed321f3056007aaa3b4f030d02cf3b08a1308d847",
       "status": "current",
       "role": "implementation",
       "dependsOn": [
         "src/chromium.ts",
         "src/constants.ts",
         "src/convert.ts",
+        "src/exa.ts",
         "src/http.ts",
-        "src/policy.ts",
         "src/process.ts",
-        "src/queue.ts",
         "src/types.ts"
       ]
     },
     {
-      "path": "src/status.ts",
-      "fingerprint": "sha256:c04908dd61fd7691a7e12564d4caf3c5a3f6299275aecc530d5723c4377240a6",
-      "status": "current",
-      "role": "implementation"
-    },
-    {
       "path": "src/types.ts",
-      "fingerprint": "sha256:c98d4eb845bbfb2329ec5bcbc6d6bc6b49aab5a14662d7605af392cb169cf01c",
+      "fingerprint": "sha256:3a8655ed6947959a5676022114712380255e8470bceda45f63d01664bfacba65",
       "status": "current",
       "role": "implementation"
     },
     {
-      "path": "test/policy.test.ts",
-      "fingerprint": "sha256:5005bc1c2fb5d9023e2ecd62898d3f5e0022e8567cfd115b49802c1517c97c06",
+      "path": "test/exa.smoke.ts",
+      "fingerprint": "sha256:73a009fbe3944239b1835e41476693ee1f8c9e27aea53b06c05fae285df84c52",
       "status": "current",
       "role": "tests",
-      "dependsOn": ["src/policy.ts"]
+      "dependsOn": ["src/exa.ts"]
     },
     {
-      "path": "test/status.test.ts",
-      "fingerprint": "sha256:e7ac2f6fa6b4e8ab829df8dc1e5993df05333502cf372a0ba4a6fa8f3cdaf9b4",
+      "path": "test/process.test.ts",
+      "fingerprint": "sha256:1a63d70b9e0c19f78da52a7bcbb27ffa8530b360664c1630297c64bbb5838994",
       "status": "current",
       "role": "tests",
-      "dependsOn": ["src/status.ts"]
+      "dependsOn": ["src/process.ts"]
     },
     {
       "path": "test/web.test.ts",
-      "fingerprint": "sha256:8849bf0a2b71e12b9cb15826e23807e34748fb4a627a269e212f5a7b64bc9c1c",
+      "fingerprint": "sha256:f70a05d13d5fc51ed9009d97a09ae57549d7b4709f7c822388270e1a030978fc",
       "status": "current",
       "role": "tests",
       "dependsOn": [
         "src/chromium.ts",
         "src/constants.ts",
         "src/convert.ts",
+        "src/exa.ts",
         "src/http.ts",
-        "src/policy.ts",
         "src/process.ts",
-        "src/queue.ts",
         "src/service.ts"
       ]
     }

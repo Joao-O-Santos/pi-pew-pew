@@ -101,7 +101,9 @@ means Chromium itself is the origin request for browser modes.
 
 The split is intentional:
 
-- `fetch` contacts Exa only and uses cached content.
+- Search and discovery are outside PEW-PEW; use a remote research worker
+  (for example, Parallel via MCPorter) to find a URL first.
+- `fetch` contacts Exa only and uses cached content for that known URL.
 - `render` and `screenshot` contact the original site through your
   dedicated Chromium profile.
 - Browser modes do not click, type, submit, rotate proxies, solve
