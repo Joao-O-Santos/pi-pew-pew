@@ -66,6 +66,27 @@ test("Exa fetch is cache-only, bounded, authenticated, and never targets the req
   assert.equal(body.text.maxCharacters, LIMITS.outputBytes);
 });
 
+test("Pi cancellation reaches the Exa request", async () => {
+  let requestSignal: AbortSignal | undefined;
+  const fetch = async (_input: string | URL | Request, init?: RequestInit): Promise<Response> => {
+    requestSignal = init?.signal as AbortSignal | undefined;
+    return new Promise<Response>((_resolve, reject) => {
+      const abort = () => reject(requestSignal?.reason);
+      requestSignal?.addEventListener("abort", abort, { once: true });
+      if (requestSignal?.aborted) abort();
+    });
+  };
+  const parent = new AbortController();
+  const pending = new WebService(
+    new ExaCache(fetch as typeof globalThis.fetch, "test-key"),
+    fakeChromium(),
+  ).execute("https://example.test/slow", "fetch", parent.signal);
+  await new Promise<void>((resolve) => setImmediate(resolve));
+  parent.abort(new Error("cancelled"));
+  await assert.rejects(pending, /cancelled/);
+  assert.equal(requestSignal?.aborted, true);
+});
+
 test("Exa errors do not retry and surface Retry-After", async () => {
   let calls = 0;
   const fetch = async (): Promise<Response> => {
