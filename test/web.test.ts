@@ -208,7 +208,7 @@ test("Exa cache miss suggests render without contacting the origin", async () =>
   assert.equal(calls, 1);
   assert.equal(result.details.outcome, "failed");
   assert.equal(result.details.suggestedMode, "render");
-  assert.match(text(result), /cache miss/i);
+  assert.match(text(result), /cached content/i);
 });
 
 test("missing Exa key fails locally without a network request", async () => {

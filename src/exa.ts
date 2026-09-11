@@ -77,12 +77,25 @@ export class ExaCache {
     }
     const statusValue = (status as { status?: unknown }).status;
     if (statusValue === "error") {
-      throw new WebFailureError("PEW-PEW: Exa has no cached copy of this URL", {
-        source: "exa",
-        status: response.status,
-        reason: "Exa cache miss; mode=render can open the origin when appropriate",
-        suggestedMode: "render",
-      });
+      const tag =
+        (status as { error?: { tag?: unknown } }).error &&
+        typeof (status as { error?: { tag?: unknown } }).error?.tag === "string"
+          ? (status as { error: { tag: string } }).error.tag
+          : undefined;
+      const cacheMiss = tag === "CRAWL_NOT_FOUND";
+      throw new WebFailureError(
+        cacheMiss
+          ? "PEW-PEW: Exa has no cached copy of this URL"
+          : "PEW-PEW: Exa could not return cached content for this URL",
+        {
+          source: "exa",
+          status: response.status,
+          reason: cacheMiss
+            ? "Exa cache miss; mode=render can open the origin when appropriate"
+            : "Exa could not return cached content; mode=render can open the origin when appropriate",
+          suggestedMode: "render",
+        },
+      );
     }
     if (statusValue !== "success" || (status as { source?: unknown }).source === "crawled") {
       throw new WebFailureError("PEW-PEW: Exa returned a malformed response", {
