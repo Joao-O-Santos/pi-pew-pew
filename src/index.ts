@@ -61,9 +61,13 @@ export default function pewPew(pi: ExtensionAPI) {
       );
     },
     renderResult(result, { expanded, isPartial }, theme, context) {
-      if (isPartial) return new Text(theme.fg("warning", "pew-pew → retrieving..."), 0, 0);
+      if (isPartial) {
+        return new Text(theme.fg("warning", "pew-pew → retrieving..."), 0, 0);
+      }
       const details = result.details;
-      const host = shortHost(details?.finalUrl ?? details?.requestedUrl ?? context.args.url ?? "(unknown)");
+      const host = shortHost(
+        details?.finalUrl ?? details?.requestedUrl ?? context.args.url ?? "(unknown)",
+      );
       const source = details?.source?.toUpperCase() ?? "?";
       const format = details?.format ?? "text";
       const summary =
@@ -71,7 +75,11 @@ export default function pewPew(pi: ExtensionAPI) {
           ? `pew-pew → ${host} · ${source} · ${format}`
           : `pew-pew → ${host} · FAIL`;
       if (!expanded) {
-        return new Text(theme.fg(details?.outcome === "ok" ? "success" : "warning", summary), 0, 0);
+        return new Text(
+          theme.fg(details?.outcome === "ok" ? "success" : "warning", summary),
+          0,
+          0,
+        );
       }
 
       const text = resultText(result);
