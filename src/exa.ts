@@ -28,19 +28,18 @@ export class ExaCache {
       method: "POST",
       headers: {
         "content-type": "application/json",
-        "x-api-key": this.apiKey,
+        authorization: `Bearer ${this.apiKey}`,
       },
       body: JSON.stringify({
         urls: [url],
-        text: { maxCharacters: LIMITS.outputBytes },
+        text: { maxCharacters: LIMITS.exaTextCharacters },
         maxAgeHours: -1,
       }),
       signal,
     });
     const retryAfter = response.headers.get("retry-after") ?? undefined;
-    const bytes = await readBounded(response, LIMITS.exaResponseBytes);
-
     if (!response.ok) {
+      await response.body?.cancel().catch(() => undefined);
       throw new WebFailureError(`PEW-PEW: Exa returned HTTP ${response.status}`, {
         source: "exa",
         status: response.status,
@@ -48,6 +47,7 @@ export class ExaCache {
         reason: `Exa returned HTTP ${response.status}; no automatic retry was attempted`,
       });
     }
+    const bytes = await readBounded(response, LIMITS.exaResponseBytes);
 
     let value: unknown;
     try {
@@ -59,17 +59,44 @@ export class ExaCache {
         reason: "Exa returned invalid JSON",
       });
     }
-    const result =
-      value && typeof value === "object" && !Array.isArray(value)
-        ? (value as { results?: unknown }).results
-        : undefined;
-    const first = Array.isArray(result) ? result[0] : undefined;
-    if (!first || typeof first !== "object" || Array.isArray(first)) {
+    if (!value || typeof value !== "object" || Array.isArray(value)) {
+      throw new WebFailureError("PEW-PEW: Exa returned a malformed response", {
+        source: "exa",
+        status: response.status,
+        reason: "Exa response was not an object",
+      });
+    }
+    const payload = value as { results?: unknown; statuses?: unknown };
+    const status = Array.isArray(payload.statuses) ? payload.statuses[0] : undefined;
+    if (!status || typeof status !== "object" || Array.isArray(status)) {
+      throw new WebFailureError("PEW-PEW: Exa returned a malformed response", {
+        source: "exa",
+        status: response.status,
+        reason: "Exa response did not include a per-URL status",
+      });
+    }
+    const statusValue = (status as { status?: unknown }).status;
+    if (statusValue === "error") {
       throw new WebFailureError("PEW-PEW: Exa has no cached copy of this URL", {
         source: "exa",
         status: response.status,
         reason: "Exa cache miss; mode=render can open the origin when appropriate",
         suggestedMode: "render",
+      });
+    }
+    if (statusValue !== "success" || (status as { source?: unknown }).source === "crawled") {
+      throw new WebFailureError("PEW-PEW: Exa returned a malformed response", {
+        source: "exa",
+        status: response.status,
+        reason: "Exa did not confirm a cached result",
+      });
+    }
+    const first = Array.isArray(payload.results) ? payload.results[0] : undefined;
+    if (!first || typeof first !== "object" || Array.isArray(first)) {
+      throw new WebFailureError("PEW-PEW: Exa returned a malformed response", {
+        source: "exa",
+        status: response.status,
+        reason: "Exa confirmed success without a result",
       });
     }
     const item = first as Record<string, unknown>;

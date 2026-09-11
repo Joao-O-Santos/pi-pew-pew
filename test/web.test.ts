@@ -1,10 +1,11 @@
 import assert from "node:assert/strict";
-import { mkdtemp, rm, truncate, writeFile } from "node:fs/promises";
+import { access, chmod, mkdtemp, readFile, rm, truncate, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 import { pathToFileURL } from "node:url";
 import {
+  Chromium,
   type ChromiumResult,
   chromiumArguments,
   chromiumProfilePath,
@@ -12,7 +13,7 @@ import {
 } from "../src/chromium.js";
 import { LIMITS } from "../src/constants.js";
 import { absolutizeHtmlLinks, htmlToMarkdown, pandocCandidates } from "../src/convert.js";
-import { ExaCache, EXA_CONTENTS_URL } from "../src/exa.js";
+import { EXA_CONTENTS_URL, ExaCache } from "../src/exa.js";
 import { parseWebUrl } from "../src/http.js";
 import { executableWorks } from "../src/process.js";
 import { WebService } from "../src/service.js";
@@ -47,6 +48,7 @@ test("Exa fetch is cache-only, bounded, authenticated, and never targets the req
     return new Response(
       JSON.stringify({
         results: [{ url: "https://example.test/article", title: "Article", text: "body" }],
+        statuses: [{ id: "https://example.test/article", status: "success", source: "cached" }],
       }),
       { status: 200, headers: { "content-type": "application/json" } },
     );
@@ -59,11 +61,12 @@ test("Exa fetch is cache-only, bounded, authenticated, and never targets the req
   assert.ok(call);
   assert.equal(call.url, EXA_CONTENTS_URL);
   assert.equal(call.init?.method, "POST");
-  assert.equal(new Headers(call.init?.headers).get("x-api-key"), "test-key");
+  assert.equal(new Headers(call.init?.headers).get("authorization"), "Bearer test-key");
+  assert.equal(new Headers(call.init?.headers).get("x-api-key"), null);
   const body = JSON.parse(String(call.init?.body));
   assert.deepEqual(body.urls, ["https://example.test/article"]);
   assert.equal(body.maxAgeHours, -1);
-  assert.equal(body.text.maxCharacters, LIMITS.outputBytes);
+  assert.equal(body.text.maxCharacters, LIMITS.exaTextCharacters);
 });
 
 test("Pi cancellation reaches the Exa request", async () => {
@@ -106,11 +109,97 @@ test("Exa errors do not retry and surface Retry-After", async () => {
   assert.match(text(result), /no automatic retry/i);
 });
 
+test("Exa rejects invalid JSON, malformed responses, and non-cache results", async () => {
+  const cases = [
+    { body: "not JSON", message: /invalid JSON/ },
+    { body: JSON.stringify({ results: [] }), message: /malformed response/ },
+    {
+      body: JSON.stringify({
+        results: [{ text: "body" }],
+        statuses: [{ id: "https://example.test/page", status: "success", source: "crawled" }],
+      }),
+      message: /malformed response/,
+    },
+  ];
+  for (const { body, message } of cases) {
+    const fetch = async (): Promise<Response> => new Response(body, { status: 200 });
+    await assert.rejects(
+      new ExaCache(fetch as typeof globalThis.fetch, "test-key").get(
+        "https://example.test/page",
+        new AbortController().signal,
+      ),
+      message,
+    );
+  }
+});
+
+test("Exa bounds successful provider responses", async () => {
+  let cancelled = false;
+  const fetch = async (): Promise<Response> =>
+    new Response(
+      new ReadableStream({
+        cancel() {
+          cancelled = true;
+        },
+      }),
+      { status: 200, headers: { "content-length": String(LIMITS.exaResponseBytes + 1) } },
+    );
+  await assert.rejects(
+    new ExaCache(fetch as typeof globalThis.fetch, "test-key").get(
+      "https://example.test/page",
+      new AbortController().signal,
+    ),
+    /exceeds/,
+  );
+  assert.equal(cancelled, true);
+});
+
+test("Exa bounds chunked provider responses", async () => {
+  let cancelled = false;
+  const fetch = async (): Promise<Response> =>
+    new Response(
+      new ReadableStream({
+        start(controller) {
+          controller.enqueue(new Uint8Array(LIMITS.exaResponseBytes + 1));
+        },
+        cancel() {
+          cancelled = true;
+        },
+      }),
+      { status: 200 },
+    );
+  await assert.rejects(
+    new ExaCache(fetch as typeof globalThis.fetch, "test-key").get(
+      "https://example.test/page",
+      new AbortController().signal,
+    ),
+    /exceeds/,
+  );
+  assert.equal(cancelled, true);
+});
+
+test("non-rate-limit Exa HTTP errors are structured failures", async () => {
+  const fetch = async (): Promise<Response> => new Response("provider error", { status: 401 });
+  const result = await new WebService(
+    new ExaCache(fetch as typeof globalThis.fetch, "test-key"),
+    fakeChromium(),
+  ).execute("https://example.test/page", "fetch");
+  assert.equal(result.details.outcome, "failed");
+  assert.equal(result.details.status, 401);
+  assert.equal(result.details.source, "exa");
+});
+
 test("Exa cache miss suggests render without contacting the origin", async () => {
   let calls = 0;
   const fetch = async (): Promise<Response> => {
     calls += 1;
-    return new Response(JSON.stringify({ results: [] }), { status: 200 });
+    return new Response(
+      JSON.stringify({
+        results: [],
+        statuses: [{ id: "https://example.test/miss", status: "error" }],
+      }),
+      { status: 200 },
+    );
   };
   const result = await new WebService(
     new ExaCache(fetch as typeof globalThis.fetch, "test-key"),
@@ -137,15 +226,23 @@ test("missing Exa key fails locally without a network request", async () => {
   assert.match(text(result), /EXA_API_KEY/);
 });
 
-test("cached fetch output remains bounded", async () => {
-  const result = await new WebService(
-    cachedPage("x".repeat(LIMITS.outputBytes * 2)),
-    fakeChromium(),
-  ).execute("https://example.test/page", "fetch");
+test("cached fetch output, including provider metadata, remains bounded", async () => {
+  const cache = {
+    get: async (url: string) => ({
+      url,
+      title: "title\n".repeat(LIMITS.outputLines + 1),
+      text: "x".repeat(LIMITS.outputBytes * 2),
+    }),
+  };
+  const result = await new WebService(cache, fakeChromium()).execute(
+    "https://example.test/page",
+    "fetch",
+  );
   assert.equal(result.details.outcome, "ok");
   assert.equal(result.details.source, "exa");
   assert.equal(result.details.truncated, true);
-  assert.ok(Buffer.byteLength(text(result)) < LIMITS.outputBytes + 2_000);
+  assert.ok(Buffer.byteLength(text(result)) <= LIMITS.outputBytes);
+  assert.ok(text(result).split("\n").length <= LIMITS.outputLines);
 });
 
 test("render goes straight to Chromium and converts its DOM", async () => {
@@ -213,6 +310,40 @@ test("Chromium profile path has one deterministic default with environment overr
     chromiumProfilePath({ PEW_PEW_CHROMIUM_PROFILE: "/custom/profile" }, "/home/test"),
     "/custom/profile",
   );
+});
+
+test("Chromium creates its profile and removes temporary screenshots", async () => {
+  const directory = await mkdtemp(join(tmpdir(), "pi-pew-pew-chromium-test-"));
+  const executable = join(directory, "fake-chromium");
+  const profile = join(directory, "profile");
+  const record = join(directory, "screenshot-directory");
+  const original = process.env.PEW_PEW_CHROMIUM;
+  await writeFile(
+    executable,
+    `#!/bin/sh
+if [ "$1" = "--version" ]; then exit 0; fi
+for arg do
+  case "$arg" in --screenshot=*) screenshot="\${arg#--screenshot=}";; esac
+done
+printf x > "$screenshot"
+dirname "$screenshot" > "${record}"
+`,
+  );
+  await chmod(executable, 0o700);
+  process.env.PEW_PEW_CHROMIUM = executable;
+  try {
+    const result = await new Chromium(profile).screenshot(
+      "https://example.test/visual",
+      new AbortController().signal,
+    );
+    assert.deepEqual(result.screenshot, Buffer.from("x"));
+    await access(profile);
+    await assert.rejects(access((await readFile(record, "utf8")).trim()));
+  } finally {
+    if (original === undefined) delete process.env.PEW_PEW_CHROMIUM;
+    else process.env.PEW_PEW_CHROMIUM = original;
+    await rm(directory, { recursive: true, force: true });
+  }
 });
 
 test("Pandoc discovery prefers an explicit path and avoids duplicates", () => {

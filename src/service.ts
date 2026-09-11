@@ -8,6 +8,12 @@ import { parseWebUrl } from "./http.js";
 import { controlledSignal, executableWorks } from "./process.js";
 import { type WebDetails, WebFailureError, type WebMode, type WebResult } from "./types.js";
 
+function boundedText(details: WebDetails, text: string): string {
+  const output = limitText(text);
+  details.truncated ||= output.truncated;
+  return output.text;
+}
+
 function metadata(details: WebDetails): string {
   const lines = [
     `PEW-PEW web result: ${details.mode}`,
@@ -82,7 +88,10 @@ export class WebService {
         content: [
           {
             type: "text",
-            text: `${metadata(details)}\n\nPEW-PEW: retrieval failed without an automatic retry.`,
+            text: boundedText(
+              details,
+              `${metadata(details)}\n\nPEW-PEW: retrieval failed without an automatic retry.`,
+            ),
           },
         ],
         details,
@@ -94,7 +103,6 @@ export class WebService {
 
   private async retrieveCached(url: string, signal: AbortSignal): Promise<WebResult> {
     const page = await this.cache.get(url, signal);
-    const body = limitText(page.text);
     const details: WebDetails = {
       outcome: "ok",
       mode: "fetch",
@@ -103,18 +111,14 @@ export class WebService {
       finalUrl: page.url,
       contentType: "text/plain",
       format: "text",
-      truncated: body.truncated,
     };
-    const title = page.title ? `\ntitle: ${page.title}` : "";
-    return {
-      content: [
-        {
-          type: "text",
-          text: `${metadata(details)}${title}\n\n===== BEGIN cached page =====\n${body.text}\n===== END cached page =====`,
-        },
-      ],
-      details,
+    const format = () => {
+      const title = page.title ? `\ntitle: ${page.title}` : "";
+      return `${metadata(details)}${title}\n\n===== BEGIN cached page =====\n${page.text}\n===== END cached page =====`;
     };
+    let text = boundedText(details, format());
+    if (details.truncated) text = boundedText(details, format());
+    return { content: [{ type: "text", text }], details };
   }
 
   private async render(url: string, signal: AbortSignal): Promise<WebResult> {
@@ -134,7 +138,10 @@ export class WebService {
       content: [
         {
           type: "text",
-          text: `${metadata(details)}\n\n===== BEGIN rendered page =====\n${text}\n===== END rendered page =====`,
+          text: boundedText(
+            details,
+            `${metadata(details)}\n\n===== BEGIN rendered page =====\n${text}\n===== END rendered page =====`,
+          ),
         },
       ],
       details,
@@ -165,7 +172,10 @@ export class WebService {
       capture: SCREENSHOT_VIEWPORT,
     };
     const image = await this.captureScreenshot(url, signal);
-    return { content: [{ type: "text", text: metadata(details) }, image], details };
+    return {
+      content: [{ type: "text", text: boundedText(details, metadata(details)) }, image],
+      details,
+    };
   }
 
   private async retrieveLocalScreenshot(url: URL, signal: AbortSignal): Promise<WebResult> {
@@ -197,6 +207,9 @@ export class WebService {
       capture: SCREENSHOT_VIEWPORT,
     };
     const image = await this.captureScreenshot(url.href, signal);
-    return { content: [{ type: "text", text: metadata(details) }, image], details };
+    return {
+      content: [{ type: "text", text: boundedText(details, metadata(details)) }, image],
+      details,
+    };
   }
 }

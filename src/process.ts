@@ -41,6 +41,13 @@ export function runProcess(
   args: readonly string[],
   options: ProcessOptions,
 ): Promise<ProcessResult> {
+  if (options.signal?.aborted) {
+    return Promise.reject(
+      options.signal.reason instanceof Error
+        ? options.signal.reason
+        : new Error("Operation cancelled"),
+    );
+  }
   return new Promise((resolve, reject) => {
     const operation = controlledSignal(options.signal, options.timeoutMs);
     let child: ChildProcessWithoutNullStreams;

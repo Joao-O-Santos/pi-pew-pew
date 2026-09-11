@@ -1,6 +1,7 @@
 export const LIMITS = {
   outputBytes: 50 * 1024,
   outputLines: 2_000,
+  exaTextCharacters: 10_000,
   exaResponseBytes: 256 * 1024,
   fetchTimeoutMs: 15_000,
   pandocTimeoutMs: 10_000,
