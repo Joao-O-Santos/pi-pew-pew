@@ -75,11 +75,7 @@ export default function pewPew(pi: ExtensionAPI) {
           ? `pew-pew → ${host} · ${source} · ${format}`
           : `pew-pew → ${host} · FAIL`;
       if (!expanded) {
-        return new Text(
-          theme.fg(details?.outcome === "ok" ? "success" : "warning", summary),
-          0,
-          0,
-        );
+        return new Text(theme.fg(details?.outcome === "ok" ? "success" : "warning", summary), 0, 0);
       }
 
       const text = resultText(result);
