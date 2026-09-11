@@ -77,7 +77,8 @@ export class ExaCache {
       throw new WebFailureError("PEW-PEW: Exa cached result contained no page text", {
         source: "exa",
         status: response.status,
-        reason: "Exa cached result contained no page text; mode=render can open the origin when appropriate",
+        reason:
+          "Exa cached result contained no page text; mode=render can open the origin when appropriate",
         suggestedMode: "render",
       });
     }
