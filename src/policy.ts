@@ -1,11 +1,5 @@
 import robotsParserModule from "robots-parser";
-import {
-  DISALLOWED_TARGET_LIMIT,
-  LIMITS,
-  REDIRECT_STATUSES,
-  ROBOTS_AGENT,
-  USER_AGENT,
-} from "./constants.js";
+import { DISALLOWED_TARGET_LIMIT, LIMITS, REDIRECT_STATUSES } from "./constants.js";
 import {
   type Authorization,
   decodeText,
@@ -67,7 +61,7 @@ async function fetchPolicyFile(
     const load = async () => {
       const response = await fetchImpl(current, {
         redirect: "manual",
-        headers: { "user-agent": USER_AGENT, accept: "text/plain,*/*;q=0.1" },
+        headers: { accept: "text/plain,*/*;q=0.1" },
         signal,
       });
       if (REDIRECT_STATUSES.has(response.status)) {
@@ -176,7 +170,7 @@ export class PolicyManager {
       () => this.loadRobots(url.origin, signal),
       (source) => {
         if (!source.parser) return { ...source.result };
-        const allowed = source.parser.isAllowed(url.href, ROBOTS_AGENT) !== false;
+        const allowed = source.parser.isAllowed(url.href, "*") !== false;
         return allowed
           ? { ...source.result, state: "allowed" }
           : {

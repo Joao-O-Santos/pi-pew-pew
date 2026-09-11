@@ -54,12 +54,12 @@ follow-up request is unambiguous.
 ## Access policy
 
 Before an HTTP(S) page request, PEW-PEW checks and reports the origin's
-`robots.txt` with the honest `pi-pew-pew` user-agent. `robots.txt` is a
-crawler-policy signal, not a universal barrier to isolated user-directed
-retrieval: a disallowed target can be read twice per origin in a Pi
-session, then later disallowed target requests stop as crawler-like
-repetition. Allowed targets are not charged to that small budget.
-Successful policies and explicit absence are cached in memory.
+`robots.txt` without setting a custom `User-Agent` header. `robots.txt`
+is a crawler-policy signal, not a universal barrier to isolated
+user-directed retrieval: a disallowed target can be read twice per
+origin in a Pi session, then later disallowed target requests stop as
+crawler-like repetition. Allowed targets are not charged to that small
+budget. Successful policies and explicit absence are cached in memory.
 
 HTTP(S) work is serialized per origin.
 

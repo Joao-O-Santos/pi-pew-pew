@@ -1,4 +1,4 @@
-import { REDIRECT_STATUSES, REFUSAL_STATUSES, TOS_REL, USER_AGENT } from "./constants.js";
+import { REDIRECT_STATUSES, REFUSAL_STATUSES, TOS_REL } from "./constants.js";
 import type { LlmsResult, RobotsResult } from "./types.js";
 
 export type FetchImplementation = typeof globalThis.fetch;
@@ -157,7 +157,6 @@ export async function fetchWithRedirects(
         method: "GET",
         redirect: "manual",
         headers: {
-          "user-agent": USER_AGENT,
           accept:
             "text/html,application/xhtml+xml,application/json,application/xml,text/plain;q=0.9,*/*;q=0.1",
         },

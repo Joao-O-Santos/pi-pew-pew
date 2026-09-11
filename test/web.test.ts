@@ -7,7 +7,7 @@ import { join } from "node:path";
 import test from "node:test";
 import { pathToFileURL } from "node:url";
 import { type ChromiumResult, chromiumArguments } from "../src/chromium.js";
-import { LIMITS, USER_AGENT } from "../src/constants.js";
+import { LIMITS } from "../src/constants.js";
 import { absolutizeHtmlLinks, htmlToMarkdown, pandocCandidates } from "../src/convert.js";
 import {
   classifyTextContent,
@@ -228,7 +228,7 @@ test("fetch returns final URL, markdown/html, and bounded llms context", async (
     assert.match(text(result), /Hello/);
     assert.ok(text(result).indexOf("Hello") < text(result).indexOf("BEGIN llms.txt"));
     assert.equal(result.details.suggestedMode, "render");
-    assert.equal(pageUserAgent, USER_AGENT);
+    assert.ok(!pageUserAgent?.startsWith("pi-pew-pew"));
     assert.ok(Buffer.byteLength(text(result)) <= 50 * 1024);
   } finally {
     server.close();
