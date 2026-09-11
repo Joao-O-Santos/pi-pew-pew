@@ -57,7 +57,7 @@ test("Exa fetch is cache-only, bounded, authenticated, and never targets the req
   assert.ok(call);
   assert.equal(call.url, EXA_CONTENTS_URL);
   assert.equal(call.init?.method, "POST");
-  assert.equal((call.init?.headers as Record<string, string>)["x-api-key"], "test-key");
+  assert.equal(new Headers(call.init?.headers).get("x-api-key"), "test-key");
   const body = JSON.parse(String(call.init?.body));
   assert.deepEqual(body.urls, ["https://example.test/article"]);
   assert.equal(body.maxAgeHours, -1);
