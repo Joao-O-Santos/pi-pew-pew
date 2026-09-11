@@ -1,18 +1,7 @@
-export const PACING_MS = 750;
-export const DISALLOWED_PACING_MS = 2_750;
-export const DISALLOWED_TARGET_LIMIT = 2;
-export const TOS_REL = "terms-of-service";
-export const REDIRECT_STATUSES = new Set([301, 302, 303, 307, 308]);
-export const REFUSAL_STATUSES = new Set([401, 403, 407, 429, 451]);
-
 export const LIMITS = {
-  redirects: 5,
-  httpBytes: 2 * 1024 * 1024,
   outputBytes: 50 * 1024,
   outputLines: 2_000,
-  robotsBytes: 512 * 1024,
-  llmsBytes: 64 * 1024,
-  llmsOutputBytes: 4 * 1024,
+  exaResponseBytes: 256 * 1024,
   fetchTimeoutMs: 15_000,
   pandocTimeoutMs: 10_000,
   chromiumTimeoutMs: 30_000,

@@ -1,7 +1,7 @@
 {
   "name": "pi-pew-pew",
   "version": "0.5.1",
-  "description": "Polite, read-only web fetch, render, and screenshot access for Pi",
+  "description": "Read-only cached web retrieval and authenticated Chromium inspection for Pi",
   "type": "module",
   "license": "MIT",
   "repository": {
@@ -24,14 +24,15 @@
     "pi-package",
     "pi-extension",
     "web",
-    "robots.txt",
-    "llms.txt"
+    "exa",
+    "chromium"
   ],
   "engines": {
     "node": ">=22.19.0"
   },
   "scripts": {
     "test": "node --import tsx --test test/*.test.ts",
+    "test:exa": "node --import tsx --test test/exa.smoke.ts",
     "typecheck": "tsc --noEmit",
     "lint": "biome lint .",
     "format:check": "biome ci --linter-enabled=false --assist-enabled=false .",
