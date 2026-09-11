@@ -4,6 +4,7 @@
 
 [![pipeline
 status](https://gitlab.com/Joao-O-Santos/pi-pew-pew/badges/main/pipeline.svg)](https://gitlab.com/Joao-O-Santos/pi-pew-pew/-/commits/main)
+[![coverage](https://gitlab.com/Joao-O-Santos/pi-pew-pew/badges/main/coverage.svg?job=validate)](https://gitlab.com/Joao-O-Santos/pi-pew-pew/-/pipelines)
 [![npm
 version](https://img.shields.io/npm/v/pi-pew-pew.svg)](https://www.npmjs.com/package/pi-pew-pew)
 [![npm

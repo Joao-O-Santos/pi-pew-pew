@@ -11,7 +11,7 @@
     },
     {
       "path": "README.md",
-      "fingerprint": "sha256:947cadcdf47009554a685642b16eef28b58aa3c1818d257338fea8348d7ff750",
+      "fingerprint": "sha256:b4f232640a85e42c62e2c9a46d6a17a542e2b1ab661bb1f9ece7741ad3b31ec2",
       "status": "current",
       "role": "documentation",
       "dependsOn": ["package.json", "src/service.ts"]
