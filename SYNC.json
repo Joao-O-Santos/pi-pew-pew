@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "confirmedAt": "2026-09-12T08:43:40Z",
+  "confirmedAt": "2026-09-12T08:49:10Z",
   "artifacts": [
     {
       "path": "PROJECT.md",
@@ -37,13 +37,13 @@
     },
     {
       "path": "package.json",
-      "fingerprint": "sha256:d7758305275b2db62a08663f8835f2351eb2dd7e1b06993eeb9535edc47d3ea8",
+      "fingerprint": "sha256:86fa3e915515af5083e7487ed0d5c40957692557add978f2c1f437122e37f347",
       "status": "current",
       "role": "package-boundary"
     },
     {
       "path": "package-lock.json",
-      "fingerprint": "sha256:6fb7feff4dd3bba6f86b872a37c5a3e52879b9d4a9013cacef06e06ff52e8e14",
+      "fingerprint": "sha256:43b6b0dfc09fb633aeeba65282a0596b14d8c49e8209ed76c3aebb41d7b6d436",
       "status": "current",
       "role": "package-lock",
       "dependsOn": ["package.json"]

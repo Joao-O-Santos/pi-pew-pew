@@ -1,6 +1,6 @@
 {
   "name": "pi-pew-pew",
-  "version": "0.5.1",
+  "version": "0.5.2",
   "description": "Cache-only web retrieval and persistent Chromium inspection for Pi",
   "type": "module",
   "license": "MIT",
