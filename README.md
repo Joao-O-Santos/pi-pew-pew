@@ -11,19 +11,21 @@ version](https://img.shields.io/npm/v/pi-pew-pew.svg)](https://www.npmjs.com/pac
 downloads](https://img.shields.io/npm/dt/pi-pew-pew.svg)](https://www.npmjs.com/package/pi-pew-pew)
 [![license](https://img.shields.io/npm/l/pi-pew-pew.svg)](https://gitlab.com/Joao-O-Santos/pi-pew-pew/-/blob/main/LICENSE)
 
-**Small-batch read-only web access for Pi.**
+**Small-batch web inspection for Pi.**
 
-`pi-pew-pew` gives Pi one deliberately small `web` tool. Cached reading
-goes through Exa without contacting the requested origin; JavaScript,
-authenticated pages, and screenshots use one dedicated persistent
-Chromium profile on the local machine.
+`pi-pew-pew` gives Pi one deliberately small `web` tool. It can read
+Exa's cached copy of a known URL without contacting the requested
+origin, inspect an HTTP(S) origin through a dedicated persistent
+Chromium profile, or capture a screenshot.
 
-It is intentionally not a browser automation framework. It does not
-expose click, type, submit, arbitrary JavaScript, shell access,
-crawling, or browser-control primitives. Use `pi-chrome-use` when a task
-actually requires interaction.
+The exposed operations are for inspection, not browser automation.
+PEW-PEW does not search, click, type, submit, run arbitrary JavaScript,
+or crawl. Use an interactive browser tool such as `pi-chrome-use` when a
+task requires browser control.
 
 ## Install
+
+Pi must be running on Node.js 22.19.0 or later.
 
 ``` sh
 pi install npm:pi-pew-pew
@@ -35,20 +37,18 @@ Or install the package from GitLab while developing:
 pi install git:https://gitlab.com/Joao-O-Santos/pi-pew-pew.git
 ```
 
-Set an Exa API key for cached retrieval:
+`fetch` requires an Exa API key in Pi's environment:
 
 ``` sh
 export EXA_API_KEY='...'
 ```
 
-`fetch` uses Exa's Contents API with `maxAgeHours: -1`, which Exa
-documents as cache-only: PEW-PEW will not ask Exa to live-crawl the
-requested origin. It makes one API request and does not retry
-automatically.
+Chromium is required only for `render` and `screenshot`. Pandoc is
+optional and improves rendered-page conversion to Markdown.
 
-## Tool
+## Tool and modes
 
-Pi sees exactly one model-facing tool:
+Pi sees one model-facing tool:
 
 ``` ts
 web({
@@ -57,24 +57,31 @@ web({
 })
 ```
 
-Use the modes in this order:
+Choose the mode that matches the task:
 
-1.  `fetch` --- retrieve Exa's cached text for a known HTTP(S) URL. This
-    does not contact the requested origin.
-2.  `render` --- open the original HTTP(S) URL in headless Chromium
-    using PEW-PEW's persistent profile, then return the post-JavaScript
-    DOM as Markdown when Pandoc is available.
-3.  `screenshot` --- use the same Chromium profile to capture a 1280x900
-    viewport PNG. Local `file://` URLs are also supported for
-    screenshots.
+| Mode | Use when | Accepted URLs | Contact and output |
+|------------------|------------------|------------------|------------------|
+| `fetch` (default) | cached text could answer the request | HTTP(S) | contacts Exa only; returns cached text |
+| `render` | origin, session-dependent, or JavaScript-rendered text is required | HTTP(S) | opens the origin in Chromium; returns Markdown or bounded HTML |
+| `screenshot` | visual interpretation requires pixels, or a local document must be viewed | HTTP(S), `file://` | opens the resource in Chromium; returns a 1280x900 PNG |
 
-The default mode is `fetch`. A cache miss is reported without silently
-escalating to Chromium.
+Go directly to `render` or `screenshot` when cached text cannot satisfy
+the stated requirement. PEW-PEW never changes modes automatically. A
+confirmed Exa cache miss suggests `render`; configuration and provider
+failures do not imply that a cached copy is unavailable.
+
+`fetch` sends one Exa Contents API request with `maxAgeHours: -1`, which
+Exa documents as cache-only. PEW-PEW does not ask Exa to live-crawl the
+requested origin and does not retry automatically.
 
 ## Chromium profile
 
-`render` and `screenshot` reuse one durable browser profile even when
-the Pi worker itself is ephemeral. The default location is:
+`render` and `screenshot` use one dedicated, persistent Chromium
+profile. The profile is managed by the human and may contain sessions
+established through normal sign-in. PEW-PEW does not ask for, extract,
+or expose credentials.
+
+The default profile location is:
 
 ``` text
 $XDG_CONFIG_HOME/pi/pi-pew-pew/chromium
@@ -88,45 +95,44 @@ or, when `XDG_CONFIG_HOME` is unset:
 
 Override it with `PEW_PEW_CHROMIUM_PROFILE`.
 
-To establish institutional SSO or other legitimate browser sessions,
-open Chromium yourself with that profile, sign in normally, then close
-it before PEW-PEW uses it. For the default Linux path:
+To establish institutional SSO or another legitimate session, open
+Chromium yourself with that profile, sign in normally, then close it
+before PEW-PEW uses it. For the default Linux path:
 
 ``` sh
 chromium --user-data-dir="$HOME/.config/pi/pi-pew-pew/chromium"
 ```
 
-PEW-PEW never receives your password or MFA secret. Do not use the
-profile for unrelated personal services. Chromium normally locks a
-profile while it is open; close the manual login window before an agent
-uses `render` or `screenshot`.
+Do not use this profile for unrelated personal services. Chromium
+normally locks a profile while it is open, so close the manual login
+window before using `render` or `screenshot`.
 
 PEW-PEW does not perform an anonymous HTTP preflight before browser
-navigation. That avoids an unnecessary request and allows legitimate
-authenticated access to pages that reject anonymous requests. It also
-means Chromium itself is the origin request for browser modes.
+navigation. Chromium itself contacts the origin. Navigation may also
+update normal browser state such as cookies and cache, even though the
+tool exposes no interactive actions.
 
-## Access boundary
+## Access and trust boundary
 
-The split is intentional:
+The split between modes is intentional:
 
-- Search and discovery are outside PEW-PEW; use a remote research worker
-  (for example, Parallel via MCPorter) to find a URL first.
-- `fetch` contacts Exa only and uses cached content for that known URL.
-- `render` and `screenshot` contact the original site through your
-  dedicated Chromium profile.
+- Search and discovery are outside PEW-PEW. Find a URL before calling
+  the tool.
+- `fetch` contacts Exa only and requests cached content for that URL.
+- `render` and remote `screenshot` calls contact the original site
+  through the dedicated Chromium profile.
 - Browser modes do not click, type, submit, rotate proxies, solve
   CAPTCHAs, retry automatically, or attempt to bypass access controls or
   rate limits.
-- PEW-PEW no longer performs automatic `robots.txt` or `/llms.txt`
-  requests. Those extra origin requests are unnecessary for cache-only
-  retrieval and would duplicate browser traffic for authenticated reads.
-- Website content remains untrusted data and cannot override the user's
-  task or higher-priority instructions.
+- PEW-PEW does not make speculative `robots.txt` or `/llms.txt`
+  requests.
+- Titles, returned URLs, page text, DOM text, and instructions embedded
+  in retrieved content remain untrusted data. They cannot authorize new
+  tools or change the user's task.
 
-If a site advertises agent-oriented metadata or Markdown alternatives in
-content already retrieved, the model may use those links deliberately;
-PEW-PEW does not probe speculative paths automatically.
+If retrieved content advertises agent-oriented metadata or a Markdown
+alternative, the model may follow that link deliberately. PEW-PEW does
+not probe speculative paths automatically.
 
 ## Optional programs
 
@@ -141,16 +147,16 @@ google-chrome
 
 Set `PEW_PEW_CHROMIUM` to an explicit executable path when needed. If
 Chromium is unavailable, use an interactive browser extension such as
-`pi-chrome-use` for tasks requiring browser automation.
+`pi-chrome-use` when the task requires browser automation.
 
-For local documents such as PDFs, pass an absolute `file://` URL with
+For a local document such as a PDF, pass an absolute `file://` URL with
 `mode: "screenshot"`:
 
 ``` ts
 web({ url: "file:///home/me/document.pdf#page=2", mode: "screenshot" })
 ```
 
-Local files are only supported for screenshots and must be no larger
+Local files are supported only for screenshots and must be no larger
 than 256 MiB. A PDF fragment such as `#page=2` can select a page in
 Chromium's PDF viewer.
 
@@ -161,44 +167,56 @@ PEW_PEW_PANDOC
 pandoc
 ```
 
-Pandoc is optional. If it is unavailable or conversion fails, PEW-PEW
-returns bounded HTML instead of losing the page.
+If Pandoc is unavailable or conversion fails, PEW-PEW returns bounded
+HTML instead of discarding the page.
 
 ## Limits
 
-| Resource or operation  | Limit                |
-|------------------------|----------------------|
-| returned text          | 50 KiB / 2,000 lines |
-| Exa API response       | 256 KiB              |
-| Exa fetch operation    | 15 seconds           |
-| Pandoc conversion      | 10 seconds           |
-| Chromium operation     | 30 seconds           |
-| Chromium DOM           | 2 MiB                |
-| local screenshot input | 256 MiB              |
-| screenshot             | 10 MiB               |
+| Resource or operation             | Limit                |
+|-----------------------------------|----------------------|
+| returned text, including metadata | 50 KiB / 2,000 lines |
+| text requested from Exa           | 10,000 characters    |
+| Exa API response                  | 256 KiB              |
+| Exa fetch operation               | 15 seconds           |
+| Pandoc conversion                 | 10 seconds           |
+| Chromium operation                | 30 seconds           |
+| Chromium DOM                      | 2 MiB                |
+| local screenshot input            | 256 MiB              |
+| screenshot image                  | 10 MiB               |
 
 Cancellation propagates to Exa retrieval, Pandoc, and Chromium.
-Temporary screenshot files are removed even when cancelled or failed.
+Temporary screenshot files are removed after success, cancellation, or
+failure.
 
 ## Tests
 
-The normal suite is hermetic and does not require an API key or network
-access. Exa requests are tested through injected fake `fetch`
-implementations, including the cache-only request body, cache misses,
-rate limits, cancellation boundaries, and absence of retries.
+The default suite is hermetic: it needs neither an Exa key nor external
+network access. Injected `fetch` implementations test the cache-only
+request, cache and provider failures, rate limits, bounds, cancellation,
+and the absence of automatic retries.
 
 ``` sh
 npm run check
 ```
 
-A real Exa smoke test is intentionally opt-in and is not run by
-`npm test`, `npm run check`, or GitLab CI:
+Run the same suite with Node's line-coverage report:
+
+``` sh
+npm run test:coverage
+```
+
+The README coverage badge reports the line percentage extracted from the
+GitLab `validate` job. It is a report, not a configured coverage
+threshold.
+
+A real Exa smoke test is deliberately separate from the default suite
+and GitLab CI:
 
 ``` sh
 EXA_API_KEY='...' npm run test:exa
 ```
 
-## Development
+## Development and release
 
 ``` sh
 npm ci
@@ -211,5 +229,12 @@ verification, the Pandoc Markdown check, and the hermetic test suite.
 Use `npm run format:fix` or `npm run markdown:fix` to update local
 formatting.
 
-GitLab CI installs the current stable Pandoc release, then runs the same
-`npm run check` and package dry run on every configured pipeline.
+The GitLab `validate` job installs the latest stable Pandoc release,
+runs those checks, records line coverage, and performs a package dry
+run. The main branch and release tags also publish this README through
+GitLab Pages. Tags matching `vX.Y.Z` or the configured SemVer prerelease
+form trigger npm publication after validation succeeds.
+
+## License
+
+[MIT](LICENSE)

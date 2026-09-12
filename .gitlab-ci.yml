@@ -8,10 +8,12 @@ stages:
 validate:
   stage: validate
   interruptible: true
+  coverage: '/all files\s+\|\s+([\d.]+)\s+\|/'
   script:
     - npm ci
     - node scripts/install-latest-pandoc.mjs
     - npm run check
+    - npm run test:coverage
     - npm pack --dry-run
 
 publish:

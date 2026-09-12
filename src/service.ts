@@ -19,7 +19,7 @@ function metadata(details: WebDetails): string {
     `PEW-PEW web result: ${details.mode}`,
     `source: ${details.source ?? "unknown"}`,
     `requested URL: ${details.requestedUrl}`,
-    `final URL: ${details.finalUrl ?? "(unknown)"}`,
+    `final URL: ${JSON.stringify(details.finalUrl ?? "(unknown)")}`,
   ];
   if (details.status !== undefined) lines.push(`provider HTTP status: ${details.status}`);
   if (details.contentType) lines.push(`content type: ${details.contentType}`);
@@ -90,7 +90,7 @@ export class WebService {
             type: "text",
             text: boundedText(
               details,
-              `${metadata(details)}\n\nPEW-PEW: retrieval failed without an automatic retry.`,
+              `${metadata(details)}\n\nPEW-PEW: no automatic retry or mode change was attempted.`,
             ),
           },
         ],
@@ -113,8 +113,8 @@ export class WebService {
       format: "text",
     };
     const format = () => {
-      const title = page.title ? `\ntitle: ${page.title}` : "";
-      return `${metadata(details)}${title}\n\n===== BEGIN cached page =====\n${page.text}\n===== END cached page =====`;
+      const title = page.title ? `title (untrusted page metadata): ${page.title}\n\n` : "";
+      return `${metadata(details)}\n\n===== BEGIN UNTRUSTED CACHED PAGE CONTENT =====\n${title}${page.text}\n===== END UNTRUSTED CACHED PAGE CONTENT =====`;
     };
     let text = boundedText(details, format());
     if (details.truncated) text = boundedText(details, format());
@@ -140,7 +140,7 @@ export class WebService {
           type: "text",
           text: boundedText(
             details,
-            `${metadata(details)}\n\n===== BEGIN rendered page =====\n${text}\n===== END rendered page =====`,
+            `${metadata(details)}\n\n===== BEGIN UNTRUSTED RENDERED PAGE CONTENT =====\n${text}\n===== END UNTRUSTED RENDERED PAGE CONTENT =====`,
           ),
         },
       ],

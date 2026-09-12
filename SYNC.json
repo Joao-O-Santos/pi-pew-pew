@@ -1,17 +1,17 @@
 {
   "version": 2,
-  "confirmedAt": "2026-09-11T22:37:21Z",
+  "confirmedAt": "2026-09-12T08:43:40Z",
   "artifacts": [
     {
       "path": "PROJECT.md",
-      "fingerprint": "sha256:541b709c86197909842ff75aba79bcb9292153f837899e2425784d857366545f",
+      "fingerprint": "sha256:fcbb8391d04d51fb7ec4b6afb99ee9169252cf46de0e0d9c98211f82fb1eaf5e",
       "status": "current",
       "role": "project-state",
       "dependsOn": ["README.md", "package.json"]
     },
     {
       "path": "README.md",
-      "fingerprint": "sha256:b4f232640a85e42c62e2c9a46d6a17a542e2b1ab661bb1f9ece7741ad3b31ec2",
+      "fingerprint": "sha256:95c15589c037b7206370c93aecbd35967adfa6c5fe9cbf7f99006241163a6455",
       "status": "current",
       "role": "documentation",
       "dependsOn": ["package.json", "src/service.ts"]
@@ -24,7 +24,7 @@
     },
     {
       "path": ".gitlab-ci.yml",
-      "fingerprint": "sha256:3fb6b9520409986f763c37804a09fcfd19ae58e8d13144eac20e480abbb0e5cb",
+      "fingerprint": "sha256:04ec26e948d98d0e8a11c273807fc9cab76e6309f72ae053c1fe011769b594cd",
       "status": "current",
       "role": "ci-configuration",
       "dependsOn": ["package.json", "package-lock.json"]
@@ -37,7 +37,7 @@
     },
     {
       "path": "package.json",
-      "fingerprint": "sha256:01889a44030799fa33f4c143e112466f2505fd78686572fd8bb40e49e35f7b09",
+      "fingerprint": "sha256:d7758305275b2db62a08663f8835f2351eb2dd7e1b06993eeb9535edc47d3ea8",
       "status": "current",
       "role": "package-boundary"
     },
@@ -82,7 +82,7 @@
     },
     {
       "path": "src/exa.ts",
-      "fingerprint": "sha256:04702a0f2d9d6d1a406b244c01403fcadc9d527bfe00170a6fee867ff1ee5cad",
+      "fingerprint": "sha256:597aa780153040733da8f63aabaf122209502d21aff553699d4f72c5aef9d1af",
       "status": "current",
       "role": "implementation",
       "dependsOn": ["src/constants.ts", "src/http.ts", "src/types.ts"]
@@ -95,7 +95,7 @@
     },
     {
       "path": "src/index.ts",
-      "fingerprint": "sha256:72025dc59ce5bbf72521efd46d9ebe72b1238efbe8cafa7ff907d6e67f58a174",
+      "fingerprint": "sha256:97d2628eeab642e3c7568b63db17e9cef3ab37ec7cc579a65a5dcc327f3776db",
       "status": "current",
       "role": "extension-entrypoint",
       "dependsOn": ["src/http.ts", "src/service.ts", "src/types.ts"]
@@ -108,7 +108,7 @@
     },
     {
       "path": "src/service.ts",
-      "fingerprint": "sha256:44df40a6feed3a55032c2b7ed321f3056007aaa3b4f030d02cf3b08a1308d847",
+      "fingerprint": "sha256:263b5c6e0989b464b3979dbda9e3e72f71ba239d6c06cf4f33183864f7723755",
       "status": "current",
       "role": "implementation",
       "dependsOn": [
@@ -143,7 +143,7 @@
     },
     {
       "path": "test/web.test.ts",
-      "fingerprint": "sha256:f70a05d13d5fc51ed9009d97a09ae57549d7b4709f7c822388270e1a030978fc",
+      "fingerprint": "sha256:fd9b9d910ed55da9f6dd91cd7768acbaa2f72e8623f99e8e272c1ee5f936be1c",
       "status": "current",
       "role": "tests",
       "dependsOn": [

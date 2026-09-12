@@ -86,14 +86,14 @@ export class ExaCache {
       throw new WebFailureError(
         cacheMiss
           ? "PEW-PEW: Exa has no cached copy of this URL"
-          : "PEW-PEW: Exa could not return cached content for this URL",
+          : "PEW-PEW: Exa could not determine cached content for this URL",
         {
           source: "exa",
           status: response.status,
           reason: cacheMiss
             ? "Exa cache miss; mode=render can open the origin when appropriate"
-            : "Exa could not return cached content; mode=render can open the origin when appropriate",
-          suggestedMode: "render",
+            : "Exa reported a per-URL error; cache availability is unknown",
+          ...(cacheMiss ? { suggestedMode: "render" as const } : {}),
         },
       );
     }
