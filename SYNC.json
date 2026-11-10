@@ -1,17 +1,17 @@
 {
   "version": 2,
-  "confirmedAt": "2026-09-12T08:49:10Z",
+  "confirmedAt": "2026-11-10T11:20:00Z",
   "artifacts": [
     {
       "path": "PROJECT.md",
-      "fingerprint": "sha256:fcbb8391d04d51fb7ec4b6afb99ee9169252cf46de0e0d9c98211f82fb1eaf5e",
+      "fingerprint": "sha256:91d04308351dea100adc55a979cd27b57320e08233f3e6530f939aa362f87de3",
       "status": "current",
       "role": "project-state",
       "dependsOn": ["README.md", "package.json"]
     },
     {
       "path": "README.md",
-      "fingerprint": "sha256:95c15589c037b7206370c93aecbd35967adfa6c5fe9cbf7f99006241163a6455",
+      "fingerprint": "sha256:f15e133991669d9e8e6410d0b7af34d9f390aac1babb995baa43eaeef0fb28ad",
       "status": "current",
       "role": "documentation",
       "dependsOn": ["package.json", "src/service.ts"]
@@ -37,13 +37,13 @@
     },
     {
       "path": "package.json",
-      "fingerprint": "sha256:86fa3e915515af5083e7487ed0d5c40957692557add978f2c1f437122e37f347",
+      "fingerprint": "sha256:c81232d284de77866f8786c2f881c3eab4a49112f5cd60b2be22751aca63666e",
       "status": "current",
       "role": "package-boundary"
     },
     {
       "path": "package-lock.json",
-      "fingerprint": "sha256:43b6b0dfc09fb633aeeba65282a0596b14d8c49e8209ed76c3aebb41d7b6d436",
+      "fingerprint": "sha256:3dbaec0544077a9ad6e0951892df59f9304b950fcb5bda4ad4d4d496efd4d2d2",
       "status": "current",
       "role": "package-lock",
       "dependsOn": ["package.json"]
@@ -95,7 +95,7 @@
     },
     {
       "path": "src/index.ts",
-      "fingerprint": "sha256:97d2628eeab642e3c7568b63db17e9cef3ab37ec7cc579a65a5dcc327f3776db",
+      "fingerprint": "sha256:9a8f151bbd085c4e13a644a1f401a1cb99d8c93e5c851fdc85da523e2f4d33ba",
       "status": "current",
       "role": "extension-entrypoint",
       "dependsOn": ["src/http.ts", "src/service.ts", "src/types.ts"]

@@ -1,17 +1,17 @@
-import { StringEnum } from "@earendil-works/pi-ai";
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { Container, Image, Text } from "@earendil-works/pi-tui";
 import { type Static, Type } from "typebox";
 import { parseWebUrl } from "./http.js";
 import { WebService } from "./service.js";
-import type { WebMode, WebResult } from "./types.js";
+import type { WebResult } from "./types.js";
 
 const WebParameters = Type.Object({
   url: Type.String({
     description: "The absolute HTTP(S) URL to retrieve, or a file:// URL for screenshots",
   }),
   mode: Type.Optional(
-    StringEnum(["fetch", "render", "screenshot"] as const, {
+    Type.Enum(["fetch", "render", "screenshot"] as const, {
+      type: "string",
       default: "fetch",
       description:
         "fetch reads only Exa's cache and does not contact the requested origin; render opens an HTTP(S) origin in Chromium and returns text; screenshot captures pixels and is the only mode that accepts file:// URLs",
@@ -53,7 +53,7 @@ export default function pewPew(pi: ExtensionAPI) {
     ],
     parameters: WebParameters,
     async execute(_toolCallId, params: WebParameters, signal) {
-      const mode = (params.mode ?? "fetch") as WebMode;
+      const mode = params.mode ?? "fetch";
       parseWebUrl(params.url, { allowFile: mode === "screenshot" });
       return service.execute(params.url, mode, signal);
     },

@@ -35,12 +35,14 @@ canonical files.
 
 ## Previous action
 
-Clarified user documentation and model-facing guidance, separated
-confirmed cache misses from indeterminate Exa failures, and enabled
-GitLab line-coverage reporting.
+Prepared version 0.5.3 for Pi 1.5.1: aligned development dependencies,
+used TypeBox's native enum schema, and verified checks, coverage, and the
+package dry run. Pi 1.5.1 declares TypeBox 1.3.27 as a coding-agent
+dependency; TypeBox remains a host-provided peer dependency at runtime.
 
 ## Immediate next step
 
-Preserve the three-mode boundary and its bounded, separately tested Exa
-and Chromium paths. Use `pi-chrome-use` for interactive browser work and
-a separate research tool to discover URLs.
+Review the 0.5.3 release changes and publish only through the protected
+GitLab SemVer-tag pipeline after approval. Preserve the three-mode
+boundary. Use `pi-chrome-use` for interactive browser work and a separate
+research tool to discover URLs.

@@ -13,6 +13,11 @@ downloads](https://img.shields.io/npm/dt/pi-pew-pew.svg)](https://www.npmjs.com/
 
 **Small-batch web inspection for Pi.**
 
+Version 0.5.3 is verified against Pi 1.5.1. Its extension parameter
+schema uses TypeBox directly; Pi 1.5.1's extension API supports this
+standard JSON Schema shape without relying on pi-ai's legacy
+`StringEnum` helper.
+
 `pi-pew-pew` gives Pi one deliberately small `web` tool. It can read
 Exa's cached copy of a known URL without contacting the requested
 origin, inspect an HTTP(S) origin through a dedicated persistent
