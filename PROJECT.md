@@ -35,14 +35,15 @@ canonical files.
 
 ## Previous action
 
-Prepared version 0.5.3 for Pi 1.5.1: aligned development dependencies,
-used TypeBox's native enum schema, and verified checks, coverage, and the
-package dry run. Pi 1.5.1 declares TypeBox 1.3.27 as a coding-agent
-dependency; TypeBox remains a host-provided peer dependency at runtime.
+Published signed tag `v0.5.3` at
+`adf5e2b841ba9bc88c590db58ea1cb5fbed97ae6` for Pi 1.5.1. Main pipeline
+`3049475097` and release pipeline `3049671993` passed validation, Pages,
+and publication. npm version/latest/gitHead and all 13 published files
+match the release; tarball integrity and provenance metadata were
+checked. TypeBox remains a host-provided peer dependency at runtime.
 
 ## Immediate next step
 
-Review the 0.5.3 release changes and publish only through the protected
-GitLab SemVer-tag pipeline after approval. Preserve the three-mode
-boundary. Use `pi-chrome-use` for interactive browser work and a separate
-research tool to discover URLs.
+Monitor the 0.5.3 installation and preserve the three-mode boundary.
+Use `pi-chrome-use` for interactive browser work and a separate research
+tool to discover URLs.
